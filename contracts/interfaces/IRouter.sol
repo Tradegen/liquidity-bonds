@@ -8,16 +8,18 @@ interface IRouter {
     * @notice Need to transfer asset to Router contract before calling this function.
     * @param _asset Address of token to swap from.
     * @param _amount Number of tokens to swap.
+    * @param (uint256) Amount of TGEN received.
     */
-    function swapAssetForTGEN(address _asset, uint256 _amount) external;
+    function swapAssetForTGEN(address _asset, uint256 _amount) external returns (uint256);
 
     /**
     * @dev Swaps TGEN for the given asset.
     * @notice Need to transfer TGEN to Router contract before calling this function.
     * @param _asset Address of token to swap to.
     * @param _amount Number of TGEN to swap.
+     * @param (uint256) Amount of asset received.
     */
-    function swapTGENForAsset(address _asset, uint256 _amount) external;
+    function swapTGENForAsset(address _asset, uint256 _amount) external returns (uint256);
 
     /**
     * @dev Adds liquidity for asset-TGEN pair.

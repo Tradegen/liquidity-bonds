@@ -13,6 +13,8 @@ import "./interfaces/ILiquidityBond.sol";
 
 // Interfaces
 import "./interfaces/IReleaseEscrow.sol";
+import "./interfaces/IPriceAggregator.sol";
+import "./interfaces/IRouter.sol";
 
 contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable {
     using SafeMath for uint256;
@@ -20,11 +22,17 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable {
 
     /* ========== STATE VARIABLES ========== */
 
+    uint256 public constant MAX_PURCHASE_AMOUNT = 1000;
+
     IERC20 public rewardsToken; // TGEN token
     IERC20 public collateralToken; // CELO token
     IReleaseEscrow public releaseEscrow;
+    IPriceAggregator public priceAggregator;
+    IRouter public router;
+    
     uint256 public totalAvailableRewards;
     uint256 public rewardPerTokenStored;
+    uint256 public bondTokenPrice; // Price of 1 bond token in USD
 
     mapping(address => uint256) public userRewardPerTokenPaid;
     mapping(address => uint256) public rewards;
@@ -34,9 +42,11 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable {
 
     /* ========== CONSTRUCTOR ========== */
 
-    constructor(address _rewardsToken, address _collateralTokenAddress) {
+    constructor(address _rewardsToken, address _collateralTokenAddress, address _priceAggregatorAddress, address _routerAddress) {
         rewardsToken = IERC20(_rewardsToken);
         collateralToken = IERC20(_collateralTokenAddress);
+        priceAggregator = IPriceAggregator(_priceAggregatorAddress);
+        router = IRouter(_routerAddress);
     }
 
     /* ========== VIEWS ========== */
@@ -71,13 +81,25 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable {
      */
     function purchase(uint256 _amount) external override nonReentrant releaseEscrowIsSet updateReward(msg.sender) {
         require(_amount > 0, "LiquidityBond: Amount must be positive.");
+        require(_amount <= MAX_PURCHASE_AMOUNT, "LiquidityBond: Amount must be less than max purchase amount.");
 
-        totalSupply = totalSupply.add(_amount);
-        balance[msg.sender] = balance[msg.sender].add(_amount);
+        uint256 dollarValue = priceAggregator.getUSDPrice(address(collateralToken));
+        uint256 numberOfBondTokens = dollarValue.div(bondTokenPrice);
+        uint256 initialFlooredSupply = totalSupply.div(10 ** 21);
+
+        totalSupply = totalSupply.add(numberOfBondTokens);
+        balance[msg.sender] = balance[msg.sender].add(numberOfBondTokens);
+
+        // Increase price by 1% for every 1000 tokens minted.
+        if (totalSupply.div(10 ** 21) > initialFlooredSupply) {
+            bondTokenPrice = bondTokenPrice.mul(101).div(100);
+        }
 
         collateralToken.safeTransferFrom(msg.sender, address(this), _amount);
 
-        emit Purchased(msg.sender, _amount, _amount);
+        _addLiquidity(_amount);
+
+        emit Purchased(msg.sender, _amount, numberOfBondTokens);
     }
 
     /**
@@ -106,16 +128,29 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable {
 
     /**
      * @dev Updates the available rewards for the LiquidityBond contract, based on the release schedule.
-     * @param reward number of tokens to add to the LiquidityBond contract.
+     * @param _reward number of tokens to add to the LiquidityBond contract.
      */
-    function _addReward(uint256 reward) internal{
+    function _addReward(uint256 _reward) internal {
         if (totalSupply > 0) {
-            rewardPerTokenStored = rewardPerTokenStored.add(reward.div(totalSupply));
+            rewardPerTokenStored = rewardPerTokenStored.add(_reward.div(totalSupply));
         }
 
-        totalAvailableRewards = totalAvailableRewards.add(reward);
+        totalAvailableRewards = totalAvailableRewards.add(_reward);
 
-        emit RewardAdded(reward);
+        emit RewardAdded(_reward);
+    }
+
+    /**
+     * @dev Supplies liquidity for TGEN-CELO pair.
+     * @param _amountOfCollateral number of asset tokens to supply.
+     */
+    function _addLiquidity(uint256 _amountOfCollateral) internal {
+        collateralToken.approve(address(router), _amountOfCollateral.div(2));
+        uint256 numberOfTGEN = router.swapAssetForTGEN(address(collateralToken), _amountOfCollateral.div(2));
+
+        collateralToken.approve(address(router), _amountOfCollateral.div(2));
+        rewardsToken.approve(address(router), numberOfTGEN);
+        router.addLiquidity(address(collateralToken), _amountOfCollateral.div(2), numberOfTGEN);
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
@@ -153,7 +188,7 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable {
     /* ========== EVENTS ========== */
 
     event RewardAdded(uint256 reward);
-    event Purchased(address indexed user, uint256 amountDeposited, uint256 weight);
+    event Purchased(address indexed user, uint256 amountDeposited, uint256 numberOfBondTokensReceived);
     event RewardPaid(address indexed user, uint256 reward);
     event SetReleaseEscrow(address releaseEscrowAddress);
 }

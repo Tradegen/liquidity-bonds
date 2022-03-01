@@ -38,9 +38,9 @@ contract Router is IRouter {
     * @notice Need to transfer asset to Swap contract before calling this function.
     * @param _asset Address of token to swap from.
     * @param _amount Number of tokens to swap.
-
+    * @param (uint256) Amount of TGEN received.
     */
-    function swapAssetForTGEN(address _asset, uint256 _amount) external override {
+    function swapAssetForTGEN(address _asset, uint256 _amount) external override returns (uint256) {
         require(_asset != address(0), "Router: invalid asset address.");
         require(_amount > 0, "Router: amount must be positive.");
 
@@ -51,6 +51,8 @@ contract Router is IRouter {
         uint256[] memory amounts = ubeswapRouter.swapExactTokensForTokens(_amount, 0, path, msg.sender, block.timestamp + 10000);
 
         emit SwappedForTGEN(_asset, _amount, amounts[amounts.length - 1]);
+
+        return amounts[amounts.length - 1];
     }
 
     /**
@@ -58,8 +60,9 @@ contract Router is IRouter {
     * @notice Need to transfer TGEN to Router contract before calling this function.
     * @param _asset Address of token to swap to.
     * @param _amount Number of TGEN to swap.
+    * @param (uint256) Amount of asset received.
     */
-    function swapTGENForAsset(address _asset, uint256 _amount) external override {
+    function swapTGENForAsset(address _asset, uint256 _amount) external override returns (uint256) {
         require(_asset != address(0), "Router: invalid asset address.");
         require(_amount > 0, "Router: amount must be positive.");
 
@@ -70,6 +73,8 @@ contract Router is IRouter {
         uint256[] memory amounts = ubeswapRouter.swapExactTokensForTokens(_amount, 0, path, msg.sender, block.timestamp + 10000);
 
         emit SwappedFromTGEN(_asset, _amount, amounts[amounts.length - 1]);
+
+        return amounts[amounts.length - 1];
     }
 
     /**
