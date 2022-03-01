@@ -7,6 +7,7 @@ import "./openzeppelin-solidity/contracts/SafeMath.sol";
 import "./openzeppelin-solidity/contracts/ReentrancyGuard.sol";
 import "./openzeppelin-solidity/contracts/Ownable.sol";
 import "./openzeppelin-solidity/contracts/ERC20/SafeERC20.sol";
+import "./openzeppelin-solidity/contracts/ERC20/ERC20.sol";
 
 // Inheritance
 import "./interfaces/ILiquidityBond.sol";
@@ -16,7 +17,7 @@ import "./interfaces/IReleaseEscrow.sol";
 import "./interfaces/IPriceAggregator.sol";
 import "./interfaces/IRouter.sol";
 
-contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable {
+contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -37,12 +38,9 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable {
     mapping(address => uint256) public userRewardPerTokenPaid;
     mapping(address => uint256) public rewards;
 
-    uint256 public override totalSupply;
-    mapping(address => uint256) public balance;
-
     /* ========== CONSTRUCTOR ========== */
 
-    constructor(address _rewardsToken, address _collateralTokenAddress, address _priceAggregatorAddress, address _routerAddress) {
+    constructor(address _rewardsToken, address _collateralTokenAddress, address _priceAggregatorAddress, address _routerAddress) ERC20("LiquidityBond", "LB") {
         rewardsToken = IERC20(_rewardsToken);
         collateralToken = IERC20(_collateralTokenAddress);
         priceAggregator = IPriceAggregator(_priceAggregatorAddress);
@@ -51,24 +49,13 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable {
 
     /* ========== VIEWS ========== */
 
-   /**
-     * @dev Returns the number of tokens a user has purchased.
-     * @param _account address of the user.
-     * @return (uint256) number of tokens purchased.
-     */
-    function balanceOf(address _account) external view override returns (uint256) {
-        require(_account != address(0), "LiquidityBond: invalid account address.");
-
-        return balance[_account];
-    }
-
     /**
      * @dev Calculates the amount of unclaimed rewards the user has available.
      * @param _account address of the user.
      * @return (uint256) amount of available unclaimed rewards.
      */
     function earned(address _account) public view override returns (uint256) {
-        return balance[_account].mul(rewardPerTokenStored.sub(userRewardPerTokenPaid[_account])).add(rewards[_account]);
+        return balanceOf(_account).mul(rewardPerTokenStored.sub(userRewardPerTokenPaid[_account])).add(rewards[_account]);
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
@@ -85,13 +72,12 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable {
 
         uint256 dollarValue = priceAggregator.getUSDPrice(address(collateralToken));
         uint256 numberOfBondTokens = dollarValue.div(bondTokenPrice);
-        uint256 initialFlooredSupply = totalSupply.div(10 ** 21);
+        uint256 initialFlooredSupply = totalSupply().div(10 ** 21);
 
-        totalSupply = totalSupply.add(numberOfBondTokens);
-        balance[msg.sender] = balance[msg.sender].add(numberOfBondTokens);
+        _mint(msg.sender, numberOfBondTokens);
 
         // Increase price by 1% for every 1000 tokens minted.
-        if (totalSupply.div(10 ** 21) > initialFlooredSupply) {
+        if (totalSupply().div(10 ** 21) > initialFlooredSupply) {
             bondTokenPrice = bondTokenPrice.mul(101).div(100);
         }
 
@@ -131,8 +117,8 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable {
      * @param _reward number of tokens to add to the LiquidityBond contract.
      */
     function _addReward(uint256 _reward) internal {
-        if (totalSupply > 0) {
-            rewardPerTokenStored = rewardPerTokenStored.add(_reward.div(totalSupply));
+        if (totalSupply() > 0) {
+            rewardPerTokenStored = rewardPerTokenStored.add(_reward.div(totalSupply()));
         }
 
         totalAvailableRewards = totalAvailableRewards.add(_reward);

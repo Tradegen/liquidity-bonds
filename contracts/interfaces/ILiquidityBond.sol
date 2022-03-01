@@ -12,19 +12,6 @@ interface ILiquidityBond {
      */
     function earned(address _account) external view returns (uint256);
 
-    /**
-     * @dev Returns the total number of tokens purchased.
-     * @return (uint256) total number of tokens purchased.
-     */
-    function totalSupply() external view returns (uint256);
-
-    /**
-     * @dev Returns the number of tokens a user has purchased.
-     * @param _account address of the user.
-     * @return (uint256) number of tokens purchased.
-     */
-    function balanceOf(address _account) external view returns (uint256);
-
     // Mutative
 
     /**
