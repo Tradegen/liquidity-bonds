@@ -24,6 +24,8 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
     /* ========== STATE VARIABLES ========== */
 
     uint256 public constant MAX_PURCHASE_AMOUNT = 1000;
+    uint256 public constant MIN_AVERAGE_FOR_PERIOD = 1e21; // 1000 CELO
+    uint256 public constant PERIOD_DURATION = 1 days;
 
     IERC20 public rewardsToken; // TGEN token
     IERC20 public collateralToken; // CELO token
@@ -34,7 +36,9 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
     uint256 public totalAvailableRewards;
     uint256 public rewardPerTokenStored;
     uint256 public bondTokenPrice; // Price of 1 bond token in USD
+    uint256 public startTime;
 
+    mapping(uint256 => uint256) public stakedAmounts; // Period index => amount of CELO staked
     mapping(address => uint256) public userRewardPerTokenPaid;
     mapping(address => uint256) public rewards;
 
@@ -45,9 +49,16 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
         collateralToken = IERC20(_collateralTokenAddress);
         priceAggregator = IPriceAggregator(_priceAggregatorAddress);
         router = IRouter(_routerAddress);
+        startTime = block.timestamp;
     }
 
     /* ========== VIEWS ========== */
+
+    function getPeriodIndex(uint256 _timestamp) public view returns (uint256) {
+        require(_timestamp > startTime, "LiquidityBond: timestamp must be greater than start time.");
+
+        return (startTime.sub(_timestamp)).div(PERIOD_DURATION);
+    }
 
     /**
      * @dev Calculates the amount of unclaimed rewards the user has available.
@@ -63,29 +74,32 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
     /**
      * @dev Purchases liquidity bonds.
      * @notice Swaps 1/2 of collateral for TGEN and adds liquidity.
-     * @notice Collateral lost to slippage/fees is returned to the user.
      * @param _amount amount of collateral to deposit.
      */
     function purchase(uint256 _amount) external override nonReentrant releaseEscrowIsSet updateReward(msg.sender) {
         require(_amount > 0, "LiquidityBond: Amount must be positive.");
         require(_amount <= MAX_PURCHASE_AMOUNT, "LiquidityBond: Amount must be less than max purchase amount.");
 
-        uint256 dollarValue = priceAggregator.getUSDPrice(address(collateralToken));
-        uint256 numberOfBondTokens = dollarValue.div(bondTokenPrice);
+        uint256 amountOfBonusCollateral = _calculateBonusAmount(_amount);
+        uint256 dollarValue = priceAggregator.getUSDPrice(address(collateralToken)).mul(_amount.add(amountOfBonusCollateral)).div(10 ** 18);
+        uint256 numberOfBondTokens = dollarValue.mul(10 ** 18).div(bondTokenPrice);
         uint256 initialFlooredSupply = totalSupply().div(10 ** 21);
 
+        // Add original collateral amount to staked amount for current period; don't include bonus amount.
+        stakedAmounts[getPeriodIndex(block.timestamp)] = stakedAmounts[getPeriodIndex(block.timestamp)].add(_amount);
+
+        // Increase total supply and transfer bond tokens to buyer.
         _mint(msg.sender, numberOfBondTokens);
 
         // Increase price by 1% for every 1000 tokens minted.
-        if (totalSupply().div(10 ** 21) > initialFlooredSupply) {
-            bondTokenPrice = bondTokenPrice.mul(101).div(100);
-        }
+        uint256 delta = (totalSupply().div(10 ** 21)).sub(initialFlooredSupply);
+        bondTokenPrice = bondTokenPrice.mul(101 ** delta).div(100 ** delta);
 
+        // Use the deposited collateral to add liquidity for TGEN-CELO.
         collateralToken.safeTransferFrom(msg.sender, address(this), _amount);
-
         _addLiquidity(_amount);
 
-        emit Purchased(msg.sender, _amount, numberOfBondTokens);
+        emit Purchased(msg.sender, _amount, numberOfBondTokens, amountOfBonusCollateral);
     }
 
     /**
@@ -139,6 +153,24 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
         router.addLiquidity(address(collateralToken), _amountOfCollateral.div(2), numberOfTGEN);
     }
 
+    /**
+     * @dev Calculates the number of bonus tokens to consider as collateral when minting bond tokens.
+     * @notice The bonus multiplier for each period starts at +20% and falls linearly to +0% until max(1000, 1.1 * (totalSupply - amountStaked[n]) / (n-1))
+     *          have been staked for the current period.
+     * @notice The final bonus amount is [multiplier/2 * availableTokens/maxTokens * availableCollateral].
+     * @param _amountOfCollateral number of asset tokens to supply.
+     */
+    function _calculateBonusAmount(uint256 _amountOfCollateral) internal view returns (uint256) {
+        uint256 currentPeriodIndex = getPeriodIndex(block.timestamp);
+        uint256 maxTokens = (currentPeriodIndex == 0) ? MIN_AVERAGE_FOR_PERIOD :
+                            ((totalSupply().sub(stakedAmounts[currentPeriodIndex])).mul(11).div(currentPeriodIndex).div(10) > MIN_AVERAGE_FOR_PERIOD) ?
+                            totalSupply().sub(stakedAmounts[currentPeriodIndex]).mul(11).div(currentPeriodIndex).div(10) : MIN_AVERAGE_FOR_PERIOD;
+        uint256 availableTokens = (stakedAmounts[currentPeriodIndex] >= maxTokens) ? 0 : maxTokens.sub(stakedAmounts[currentPeriodIndex]);
+        uint256 availableCollateral = (availableTokens > _amountOfCollateral) ? availableTokens.sub(_amountOfCollateral) : 0;
+
+        return availableTokens.mul(3).mul(availableCollateral).div(5).div(maxTokens);
+    }
+
     /* ========== RESTRICTED FUNCTIONS ========== */
 
     /**
@@ -174,7 +206,7 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
     /* ========== EVENTS ========== */
 
     event RewardAdded(uint256 reward);
-    event Purchased(address indexed user, uint256 amountDeposited, uint256 numberOfBondTokensReceived);
+    event Purchased(address indexed user, uint256 amountDeposited, uint256 numberOfBondTokensReceived, uint256 bonus);
     event RewardPaid(address indexed user, uint256 reward);
     event SetReleaseEscrow(address releaseEscrowAddress);
 }
