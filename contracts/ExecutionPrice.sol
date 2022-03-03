@@ -71,7 +71,7 @@ contract ExecutionPrice is IExecutionPrice {
      * @notice Executes existing 'sell' orders before adding this order.
      * @param _amount number of bond tokens to buy.
      */
-    function buy(uint256 _amount) public override {
+    function buy(uint256 _amount) public override isInitialized {
         require(_amount >= minimumOrderSize, "ExecutionPrice: amount must be above minimum order size.");
 
         TGEN.safeTransferFrom(msg.sender, address(this), _amount.mul(price).div(1e18));
@@ -106,7 +106,7 @@ contract ExecutionPrice is IExecutionPrice {
      * @notice Executes existing 'buy' orders before adding this order.
      * @param _amount number of bond tokens to sell.
      */
-    function sell(uint256 _amount) public override {
+    function sell(uint256 _amount) public override isInitialized {
         require(_amount >= minimumOrderSize, "ExecutionPrice: amount must be above minimum order size.");
 
         bondToken.safeTransferFrom(msg.sender, address(this), _amount);
@@ -143,7 +143,7 @@ contract ExecutionPrice is IExecutionPrice {
      * @param _amount number of bond tokens to buy/sell.
      * @param _buy whether this is a 'buy' order.
      */
-    function updateOrder(uint256 _amount, bool _buy) external override {
+    function updateOrder(uint256 _amount, bool _buy) external override isInitialized {
         require(_amount >= minimumOrderSize, "ExecutionPrice: amount must be above minimum order size.");
 
         // User's previous order is filled, so treat this as a new order.
@@ -331,6 +331,7 @@ contract ExecutionPrice is IExecutionPrice {
      * @param _owner address of the contract owner.
      */
     function initialize(uint256 _price, uint256 _maximumNumberOfInvestors, uint256 _tradingFee, uint256 _minimumOrderSize, address _owner) external onlyPriceManager isNotInitialized {
+        require(IPriceManager(priceManager).executionPriceExists(address(this)), "ExecutionPrice: this contract is not registered in PriceManager.");
         require(_price > 0, "ExecutionPrice: price must be positive.");
         require(_maximumNumberOfInvestors >= MIN_MAXIMUM_NUMBER_OF_INVESTORS, "ExecutionPrice: maximum number of investors is too low.");
         require(_maximumNumberOfInvestors <= MAX_MAXIMUM_NUMBER_OF_INVESTORS, "ExecutionPrice: maximum number of investors is too high.");
