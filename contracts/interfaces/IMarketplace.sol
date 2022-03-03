@@ -25,7 +25,7 @@ interface IMarketplace {
     * @param _index Index of the marketplace listing
     * @return (address, bool, uint256, uint256) Address of the seller, whether the listing exists, NFT ID, and the price (in TGEN).
     */
-    function getMarketplaceListing(uint256 _index) external view returns (address, address, uint, uint, uint);
+    function getMarketplaceListing(uint256 _index) external view returns (address, bool, uint256, uint256);
 
     /**
     * @dev Purchases the ExecutionPrice NFT at the given listing index.
