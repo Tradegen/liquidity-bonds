@@ -1,0 +1,345 @@
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.8.3;
+
+//OpenZeppelin
+import "./openzeppelin-solidity/contracts/ERC20/SafeERC20.sol";
+import "./openzeppelin-solidity/contracts/ERC20/IERC20.sol";
+import "./openzeppelin-solidity/contracts/SafeMath.sol";
+
+//Inheritance
+import './interfaces/IExecutionPrice.sol';
+
+contract ExecutionPrice is IExecutionPrice {
+    using SafeERC20 for IERC20;
+    using SafeMath for uint256;
+
+    struct Order {
+        address user;
+        uint256 quantity;
+        uint256 amountFilled;
+    }
+
+    uint256 public constant MIN_MINIMUM_ORDER_VALUE = 1e18; // $1
+    uint256 public constant MAX_MINIMUM_ORDER_VALUE = 1e20; // $100
+    uint256 public constant MIN_MAXIMUM_NUMBER_OF_INVESTORS = 10;
+    uint256 public constant MAX_MAXIMUM_NUMBER_OF_INVESTORS = 50;
+    uint256 public constant MAX_TRADING_FEE = 300; // 3%, with 10000 as denominator
+
+    IERC20 public immutable TGEN;
+    IERC20 public immutable bondToken;
+    address public immutable priceManager;
+    uint256 public immutable price; // Number of TGEN per bond token
+    uint256 public immutable maximumNumberOfInvestors;
+
+    address public owner;
+    uint256 public tradingFee;
+    uint256 public minimumOrderSize;
+
+    uint256 public startIndex;
+    uint256 public endIndex;
+    bool public isBuyQueue;
+    uint256 public numberOfTokensAvailable;
+    mapping(uint256 => Order) public orderBook;
+    mapping(address => uint256) public orderIndex;
+
+    constructor(address _TGEN, address _bondToken, address _priceManager, uint256 _price, uint256 _maximumNumberOfInvestors, uint256 _tradingFee, uint256 _minimumOrderSize, address _owner) {
+        require(_TGEN != address(0), "ExecutionPrice: invalid address for TGEN.");
+        require(_bondToken != address(0), "ExecutionPrice: invalid address for bond token.");
+        require(_priceManager != address(0), "ExecutionPrice: invalid address for PriceManager contract.");
+        require(_price > 0, "ExecutionPrice: price must be positive.");
+        require(_maximumNumberOfInvestors >= MIN_MAXIMUM_NUMBER_OF_INVESTORS, "ExecutionPrice: maximum number of investors is too low.");
+        require(_maximumNumberOfInvestors <= MAX_MAXIMUM_NUMBER_OF_INVESTORS, "ExecutionPrice: maximum number of investors is too high.");
+        require(_tradingFee >= 0, "ExecutionPrice: trading fee must be positive.");
+        require(_tradingFee <= MAX_TRADING_FEE, "ExecutionPrice: trading fee is too high.");
+        require(_minimumOrderSize.mul(_price).div(1e18) >= MIN_MINIMUM_ORDER_VALUE, "ExecutionPrice: minimum order size is too low.");
+        require(_minimumOrderSize.mul(_price).div(1e18) <= MAX_MINIMUM_ORDER_VALUE, "ExecutionPrice: minimum order size is too high.");
+        require(_owner != address(0), "ExecutionPrice: invalid address for owner.");
+
+        TGEN = IERC20(_TGEN);
+        bondToken = IERC20(_bondToken);
+        priceManager = _priceManager;
+        price = _price;
+        maximumNumberOfInvestors = _maximumNumberOfInvestors;
+        tradingFee = _tradingFee;
+        minimumOrderSize = _minimumOrderSize;
+        owner = _owner;
+        isBuyQueue = true;
+    }
+
+    /* ========== MUTATIVE FUNCTIONS ========== */
+
+    /**
+     * @dev Creates an order to buy bond tokens.
+     * @notice Executes existing 'sell' orders before adding this order.
+     * @param _amount number of bond tokens to buy.
+     */
+    function buy(uint256 _amount) public override {
+        require(_amount >= minimumOrderSize, "ExecutionPrice: amount must be above minimum order size.");
+
+        TGEN.safeTransferFrom(msg.sender, address(this), _amount.mul(price).div(1e18));
+
+        // Add order to queue.
+        if (isBuyQueue) {
+            require(endIndex.sub(startIndex) <= maximumNumberOfInvestors, "ExecutionPrice: queue is full.");
+
+            _append(msg.sender, _amount);
+
+            emit Buy(msg.sender, _amount, 0);
+        }
+        // Fill as much of the order as possible, and add remainder as a new order.
+        else {
+            uint256 filledAmount = _executeOrder(_amount);
+
+            // Not enough sell orders to fill this buy order.
+            // Queue becomes a 'buy queue' and this becomes the first order in the queue.
+            if (filledAmount < _amount) {
+                isBuyQueue = !isBuyQueue;
+                _append(msg.sender, _amount);
+            }
+
+            bondToken.safeTransfer(msg.sender, filledAmount);
+
+            emit Buy(msg.sender, _amount, filledAmount);
+        }
+    }
+
+    /**
+     * @dev Creates an order to sell bond tokens.
+     * @notice Executes existing 'buy' orders before adding this order.
+     * @param _amount number of bond tokens to sell.
+     */
+    function sell(uint256 _amount) public override {
+        require(_amount >= minimumOrderSize, "ExecutionPrice: amount must be above minimum order size.");
+
+        bondToken.safeTransferFrom(msg.sender, address(this), _amount);
+
+        // Fill as much of the order as possible, and add remainder as a new order.
+        if (isBuyQueue) {
+            uint256 filledAmount = _executeOrder(_amount);
+
+            // Not enough buy orders to fill this sell order.
+            // Queue becomes a 'sell queue' and this becomes the first order in the queue.
+            if (filledAmount < _amount) {
+                isBuyQueue = !isBuyQueue;
+                _append(msg.sender, _amount);
+            }
+
+            bondToken.safeTransfer(msg.sender, filledAmount);
+
+            emit Sell(msg.sender, _amount, filledAmount);
+        }
+        // Add order to queue.
+        else {
+            require(endIndex.sub(startIndex) <= maximumNumberOfInvestors, "ExecutionPrice: queue is full.");
+
+            _append(msg.sender, _amount);
+
+            emit Sell(msg.sender, _amount, 0);
+        }
+    }
+
+   /**
+     * @dev Updates the order quantity and transaction type (buy vs. sell).
+     * @notice If the transaction type is different from the original type,
+     *          existing orders will be executed before updating this order.
+     * @param _amount number of bond tokens to buy/sell.
+     * @param _buy whether this is a 'buy' order.
+     */
+    function updateOrder(uint256 _amount, bool _buy) external override {
+        require(_amount >= minimumOrderSize, "ExecutionPrice: amount must be above minimum order size.");
+
+        // User's previous order is filled, so treat this as a new order.
+        if (orderIndex[msg.sender] < startIndex) {
+            if (_buy) {
+                buy(_amount);
+            }
+            else {
+                sell(_amount);
+            }
+
+            return;
+        }
+
+        // Order is same type as the queue.
+        if ((_buy && isBuyQueue) || (!_buy && !isBuyQueue)) {
+            // Cancels the order if the new amount is less than the filled amount.
+            if (_amount < orderBook[orderIndex[msg.sender]].amountFilled) {
+                orderBook[orderIndex[msg.sender]].quantity = orderBook[orderIndex[msg.sender]].amountFilled;
+            }
+            // Amount is less than previous amount, so release tokens held in escrow.
+            else if (_amount <= orderBook[orderIndex[msg.sender]].quantity) {
+                if (_buy) {
+                    TGEN.transfer(msg.sender, (orderBook[orderIndex[msg.sender]].quantity.sub(_amount)).mul(price).div(1e18));
+                }
+                else {
+                    bondToken.transfer(msg.sender, orderBook[orderIndex[msg.sender]].quantity.sub(_amount));
+                }
+                
+                orderBook[orderIndex[msg.sender]].quantity = _amount;
+
+                emit UpdatedOrder(msg.sender, _amount, _buy);
+            }
+            // Amount is more than previous amount, so transfer tokens to this contract to hold in escrow.
+            else {
+                if (_buy) {
+                    TGEN.safeTransferFrom(msg.sender, address(this), (_amount.sub(orderBook[orderIndex[msg.sender]].quantity)).mul(price).div(1e18));
+                }
+                else {
+                    bondToken.safeTransferFrom(msg.sender, address(this), _amount.sub(orderBook[orderIndex[msg.sender]].quantity));
+                }
+
+                orderBook[orderIndex[msg.sender]].quantity = _amount;
+
+                emit UpdatedOrder(msg.sender, _amount, _buy);
+            }
+        }
+        // Order type is different from that of the queue.
+        // Releases user's tokens from escrow, cancels the existing order, and create order opposite the queue's type.
+        else {
+            if (_buy) {
+                bondToken.transfer(msg.sender, orderBook[orderIndex[msg.sender]].quantity.sub(orderBook[orderIndex[msg.sender]].amountFilled));
+
+                orderBook[orderIndex[msg.sender]].amountFilled = 0;
+                orderBook[orderIndex[msg.sender]].quantity = 0;
+
+                buy(_amount);
+            }
+            else {
+                TGEN.transfer(msg.sender, orderBook[orderIndex[msg.sender]].quantity.sub(orderBook[orderIndex[msg.sender]].amountFilled));
+
+                orderBook[orderIndex[msg.sender]].amountFilled = 0;
+                orderBook[orderIndex[msg.sender]].quantity = 0;
+
+                sell(_amount);
+            }
+        }
+    }
+
+    /* ========== INTERNAL FUNCTIONS ========== */
+
+    /**
+     * @dev Adds an order to the end of the queue.
+     * @param _user address of the user placing this order.
+     * @param _amount number of bond tokens.
+     */
+    function _append(address _user, uint256 _amount) internal {
+        orderBook[endIndex] = Order({
+            user: _user,
+            quantity: _amount,
+            amountFilled: 0
+        });
+
+        numberOfTokensAvailable = numberOfTokensAvailable.add(_amount);
+        orderIndex[_user] = endIndex;
+        endIndex = endIndex.add(1);
+    }
+
+    /**
+     * @dev Executes an order based on the queue type.
+     * @notice If queue is a 'buy queue', this will be treated as a 'sell' order. 
+     * @notice Fee is paid in bondn tokens if queue is a 'sell queue'.
+     * @param _amount number of bond tokens.
+     * @return totalFilledAmount - number of tokens bought/sold.
+     */
+    function _executeOrder(uint256 _amount) internal returns (uint256 totalFilledAmount) {
+        uint256 filledAmount;
+        uint256 end = endIndex; // Save gas by getting endIndex once, instead of after each loop iteration.
+        // Iterate over each open order until given order is filled or there's no more open orders.
+        // This loop is bounded by 'maximumNumberOfInvestors', which cannot be more than 50.
+        for (uint256 i = startIndex; i < end; i++) {
+            filledAmount = (_amount.sub(totalFilledAmount) > orderBook[i].quantity.sub(orderBook[i].amountFilled)) ?
+                            orderBook[i].quantity.sub(orderBook[i].amountFilled) :
+                            orderBook[i].quantity.sub(orderBook[i].amountFilled).sub(_amount.sub(totalFilledAmount));
+            totalFilledAmount = totalFilledAmount.add(filledAmount);
+            orderBook[i].amountFilled.add(filledAmount);
+
+            if (isBuyQueue) {
+                TGEN.transfer(orderBook[i].user, filledAmount.mul(price).mul(10000 - tradingFee).div(1e18).div(10000));
+            }
+            else {
+                bondToken.transfer(orderBook[i].user, filledAmount.mul(10000 - tradingFee).div(10000));
+            }
+
+            if (totalFilledAmount == _amount) {
+                break;
+            }
+        }
+
+        // Send trading fee to contract owner.
+        if (isBuyQueue) {
+            TGEN.transfer(owner, totalFilledAmount.mul(price).mul(tradingFee).div(1e18).div(10000));
+        }
+        else {
+            bondToken.transfer(owner, totalFilledAmount.mul(tradingFee).div(10000));
+        }
+
+        numberOfTokensAvailable = numberOfTokensAvailable.sub(totalFilledAmount);
+    }
+
+    /* ========== RESTRICTED FUNCTIONS ========== */
+
+    /**
+     * @dev Updates the trading fee for this ExecutionPrice.
+     * @notice This function is meant to be called by the contract owner.
+     * @param _newFee the new trading fee.
+     */
+    function updateTradingFee(uint256 _newFee) external override onlyOwner {
+        require(_newFee >= 0, "ExecutionPrice: trading fee must be positive.");
+        require(_newFee <= MAX_TRADING_FEE, "ExecutionPrice: trading fee is too high.");
+
+        tradingFee = _newFee;
+
+        emit UpdatedTradingFee(_newFee);
+    }
+
+    /**
+     * @dev Updates the minimum order size for this ExecutionPrice.
+     * @notice This function is meant to be called by the contract owner.
+     * @param _newSize the new minimum order size.
+     */
+    function updateMinimumOrderSize(uint256 _newSize) external override onlyOwner {
+        require(_newSize.mul(price).div(1e18) >= MIN_MINIMUM_ORDER_VALUE, "ExecutionPrice: minimum order size is too low.");
+        require(_newSize.mul(price).div(1e18) <= MAX_MINIMUM_ORDER_VALUE, "ExecutionPrice: minimum order size is too high.");
+
+        minimumOrderSize = _newSize;
+
+        emit UpdatedMinimumOrderSize(_newSize);
+    }
+
+    /**
+     * @dev Updates the owner of this ExecutionPrice.
+     * @notice This function is meant to be called by the PriceManager contract whenever the
+     *          ExecutionPrice NFT is purchased by another user.
+     * @param _newOwner the new contract owner.
+     */
+    function updateContractOwner(address _newOwner) external onlyPriceManager {
+        require(_newOwner != address(0), "ExecutionPrice: invalid address for new owner.");
+        require(_newOwner != owner, "ExecutionPrice: owner is the same.");
+
+        owner = _newOwner;
+
+        emit UpdatedOwner(_newOwner);
+    }
+
+    /* ========== MODIFIERS ========== */
+
+    modifier onlyPriceManager() {
+        require(msg.sender == priceManager, "ExecutionPrice: only the PriceManager contract can call this function.");
+        _;
+    }
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "ExecutionPrice: only the contract owner can call this function.");
+        _;
+    }
+
+    /* ========== EVENTS ========== */
+
+    event Buy(address indexed user, uint256 numberOfTokens, uint256 filledAmount);
+    event Sell(address indexed user, uint256 numberOfTokens, uint256 filledAmount);
+    event UpdatedOwner(address newOwner);
+    event UpdatedTradingFee(uint256 newFee);
+    event UpdatedMinimumOrderSize(uint256 newOrderSize);
+    event UpdatedOrder(address indexed user, uint256 numberOfTokens, bool isBuyOrder);
+}
