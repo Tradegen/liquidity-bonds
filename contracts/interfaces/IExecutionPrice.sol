@@ -41,4 +41,15 @@ interface IExecutionPrice {
      * @param _newSize the new minimum order size.
      */
     function updateMinimumOrderSize(uint256 _newSize) external;
+
+    /**
+     * @dev Initializes the contract's parameters.
+     * @notice This function is meant to be called by the PriceManager contract when creating this contract.
+     * @param _price the price of each bond token.
+     * @param _maximumNumberOfInvestors the maximum number of open orders the queue can have.
+     * @param _tradingFee fee that is paid to the contract owner whenever an order is filled; denominated by 10000.
+     * @param _minimumOrderSize minimum number of bond tokens per order.
+     * @param _owner address of the contract owner.
+     */
+    function initialize(uint256 _price, uint256 _maximumNumberOfInvestors, uint256 _tradingFee, uint256 _minimumOrderSize, address _owner) external;
 }

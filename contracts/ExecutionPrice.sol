@@ -34,8 +34,8 @@ contract ExecutionPrice is IExecutionPrice {
     address public immutable priceManager;
     address public immutable marketplace;
     address public immutable xTGEN;
-    uint256 public immutable price; // Number of TGEN per bond token
-    uint256 public immutable maximumNumberOfInvestors;
+    uint256 public price; // Number of TGEN per bond token
+    uint256 public maximumNumberOfInvestors;
 
     address public owner;
     uint256 public tradingFee;
@@ -48,31 +48,19 @@ contract ExecutionPrice is IExecutionPrice {
     mapping(uint256 => Order) public orderBook;
     mapping(address => uint256) public orderIndex;
 
-    constructor(address _TGEN, address _bondToken, address _priceManager, address _marketplace, address _xTGEN, uint256 _price, uint256 _maximumNumberOfInvestors, uint256 _tradingFee, uint256 _minimumOrderSize, address _owner) {
+    bool private initialized;
+
+    constructor(address _TGEN, address _bondToken, address _marketplace, address _xTGEN) {
         require(_TGEN != address(0), "ExecutionPrice: invalid address for TGEN.");
         require(_bondToken != address(0), "ExecutionPrice: invalid address for bond token.");
-        require(_priceManager != address(0), "ExecutionPrice: invalid address for PriceManager contract.");
         require(_marketplace != address(0), "ExecutionPrice: invalid address for Marketplace contract.");
         require(_xTGEN != address(0), "ExecutionPrice: invalid address for xTGEN contract.");
-        require(_price > 0, "ExecutionPrice: price must be positive.");
-        require(_maximumNumberOfInvestors >= MIN_MAXIMUM_NUMBER_OF_INVESTORS, "ExecutionPrice: maximum number of investors is too low.");
-        require(_maximumNumberOfInvestors <= MAX_MAXIMUM_NUMBER_OF_INVESTORS, "ExecutionPrice: maximum number of investors is too high.");
-        require(_tradingFee >= 0, "ExecutionPrice: trading fee must be positive.");
-        require(_tradingFee <= MAX_TRADING_FEE, "ExecutionPrice: trading fee is too high.");
-        require(_minimumOrderSize.mul(_price).div(1e18) >= MIN_MINIMUM_ORDER_VALUE, "ExecutionPrice: minimum order size is too low.");
-        require(_minimumOrderSize.mul(_price).div(1e18) <= MAX_MINIMUM_ORDER_VALUE, "ExecutionPrice: minimum order size is too high.");
-        require(_owner != address(0), "ExecutionPrice: invalid address for owner.");
 
         TGEN = IERC20(_TGEN);
         bondToken = IERC20(_bondToken);
-        priceManager = _priceManager;
+        priceManager = msg.sender;
         marketplace = _marketplace;
         xTGEN = _xTGEN;
-        price = _price;
-        maximumNumberOfInvestors = _maximumNumberOfInvestors;
-        tradingFee = _tradingFee;
-        minimumOrderSize = _minimumOrderSize;
-        owner = _owner;
         isBuyQueue = true;
     }
 
@@ -333,6 +321,35 @@ contract ExecutionPrice is IExecutionPrice {
         emit UpdatedOwner(_newOwner);
     }
 
+    /**
+     * @dev Initializes the contract's parameters.
+     * @notice This function is meant to be called by the PriceManager contract when creating this contract.
+     * @param _price the price of each bond token.
+     * @param _maximumNumberOfInvestors the maximum number of open orders the queue can have.
+     * @param _tradingFee fee that is paid to the contract owner whenever an order is filled; denominated by 10000.
+     * @param _minimumOrderSize minimum number of bond tokens per order.
+     * @param _owner address of the contract owner.
+     */
+    function initialize(uint256 _price, uint256 _maximumNumberOfInvestors, uint256 _tradingFee, uint256 _minimumOrderSize, address _owner) external onlyPriceManager isNotInitialized {
+        require(_price > 0, "ExecutionPrice: price must be positive.");
+        require(_maximumNumberOfInvestors >= MIN_MAXIMUM_NUMBER_OF_INVESTORS, "ExecutionPrice: maximum number of investors is too low.");
+        require(_maximumNumberOfInvestors <= MAX_MAXIMUM_NUMBER_OF_INVESTORS, "ExecutionPrice: maximum number of investors is too high.");
+        require(_tradingFee >= 0, "ExecutionPrice: trading fee must be positive.");
+        require(_tradingFee <= MAX_TRADING_FEE, "ExecutionPrice: trading fee is too high.");
+        require(_minimumOrderSize.mul(_price).div(1e18) >= MIN_MINIMUM_ORDER_VALUE, "ExecutionPrice: minimum order size is too low.");
+        require(_minimumOrderSize.mul(_price).div(1e18) <= MAX_MINIMUM_ORDER_VALUE, "ExecutionPrice: minimum order size is too high.");
+        require(_owner != address(0), "ExecutionPrice: invalid address for owner.");
+
+        price = _price;
+        maximumNumberOfInvestors = _maximumNumberOfInvestors;
+        tradingFee = _tradingFee;
+        minimumOrderSize = _minimumOrderSize;
+        owner = _owner;
+        initialized = true;
+
+        emit InitializedContract(_price, _maximumNumberOfInvestors, _tradingFee, _minimumOrderSize, _owner);
+    }
+
     /* ========== MODIFIERS ========== */
 
     modifier onlyPriceManager() {
@@ -345,6 +362,16 @@ contract ExecutionPrice is IExecutionPrice {
         _;
     }
 
+    modifier isNotInitialized() {
+        require(!initialized, "ExecutionPrice: contract must not be initialized.");
+        _;
+    }
+
+    modifier isInitialized() {
+        require(initialized, "ExecutionPrice: contract must be initialized.");
+        _;
+    }
+
     /* ========== EVENTS ========== */
 
     event Buy(address indexed user, uint256 numberOfTokens, uint256 filledAmount);
@@ -353,4 +380,5 @@ contract ExecutionPrice is IExecutionPrice {
     event UpdatedTradingFee(uint256 newFee);
     event UpdatedMinimumOrderSize(uint256 newOrderSize);
     event UpdatedOrder(address indexed user, uint256 numberOfTokens, bool isBuyOrder);
+    event InitializedContract(uint256 price, uint256 maximumNumberOfInvestors, uint256 tradingFee, uint256 minimumOrderSize, address owner);
 }
