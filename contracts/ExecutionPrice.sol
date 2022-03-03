@@ -2,13 +2,16 @@
 
 pragma solidity ^0.8.3;
 
-//OpenZeppelin
+// OpenZeppelin
 import "./openzeppelin-solidity/contracts/ERC20/SafeERC20.sol";
 import "./openzeppelin-solidity/contracts/ERC20/IERC20.sol";
 import "./openzeppelin-solidity/contracts/SafeMath.sol";
 
-//Inheritance
+// Inheritance
 import './interfaces/IExecutionPrice.sol';
+
+// Interfaces
+import './interfaces/IPriceManager.sol';
 
 contract ExecutionPrice is IExecutionPrice {
     using SafeERC20 for IERC20;
@@ -29,6 +32,8 @@ contract ExecutionPrice is IExecutionPrice {
     IERC20 public immutable TGEN;
     IERC20 public immutable bondToken;
     address public immutable priceManager;
+    address public immutable marketplace;
+    address public immutable xTGEN;
     uint256 public immutable price; // Number of TGEN per bond token
     uint256 public immutable maximumNumberOfInvestors;
 
@@ -43,10 +48,12 @@ contract ExecutionPrice is IExecutionPrice {
     mapping(uint256 => Order) public orderBook;
     mapping(address => uint256) public orderIndex;
 
-    constructor(address _TGEN, address _bondToken, address _priceManager, uint256 _price, uint256 _maximumNumberOfInvestors, uint256 _tradingFee, uint256 _minimumOrderSize, address _owner) {
+    constructor(address _TGEN, address _bondToken, address _priceManager, address _marketplace, address _xTGEN, uint256 _price, uint256 _maximumNumberOfInvestors, uint256 _tradingFee, uint256 _minimumOrderSize, address _owner) {
         require(_TGEN != address(0), "ExecutionPrice: invalid address for TGEN.");
         require(_bondToken != address(0), "ExecutionPrice: invalid address for bond token.");
         require(_priceManager != address(0), "ExecutionPrice: invalid address for PriceManager contract.");
+        require(_marketplace != address(0), "ExecutionPrice: invalid address for Marketplace contract.");
+        require(_xTGEN != address(0), "ExecutionPrice: invalid address for xTGEN contract.");
         require(_price > 0, "ExecutionPrice: price must be positive.");
         require(_maximumNumberOfInvestors >= MIN_MAXIMUM_NUMBER_OF_INVESTORS, "ExecutionPrice: maximum number of investors is too low.");
         require(_maximumNumberOfInvestors <= MAX_MAXIMUM_NUMBER_OF_INVESTORS, "ExecutionPrice: maximum number of investors is too high.");
@@ -59,6 +66,8 @@ contract ExecutionPrice is IExecutionPrice {
         TGEN = IERC20(_TGEN);
         bondToken = IERC20(_bondToken);
         priceManager = _priceManager;
+        marketplace = _marketplace;
+        xTGEN = _xTGEN;
         price = _price;
         maximumNumberOfInvestors = _maximumNumberOfInvestors;
         tradingFee = _tradingFee;
@@ -267,11 +276,13 @@ contract ExecutionPrice is IExecutionPrice {
         }
 
         // Send trading fee to contract owner.
+        // If owner is the marketplace contract (NFT held in escrow while listed for sale), transfer TGEN to xTGEN contract
+        // and burn bond tokens.
         if (isBuyQueue) {
-            TGEN.transfer(owner, totalFilledAmount.mul(price).mul(tradingFee).div(1e18).div(10000));
+            TGEN.transfer((owner == marketplace) ? xTGEN : owner, totalFilledAmount.mul(price).mul(tradingFee).div(1e18).div(10000));
         }
         else {
-            bondToken.transfer(owner, totalFilledAmount.mul(tradingFee).div(10000));
+            bondToken.transfer((owner == marketplace) ? address(0) : owner, totalFilledAmount.mul(tradingFee).div(10000));
         }
 
         numberOfTokensAvailable = numberOfTokensAvailable.sub(totalFilledAmount);
