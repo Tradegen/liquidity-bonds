@@ -312,7 +312,7 @@ contract ExecutionPrice is IExecutionPrice {
      *          ExecutionPrice NFT is purchased by another user.
      * @param _newOwner the new contract owner.
      */
-    function updateContractOwner(address _newOwner) external onlyPriceManager {
+    function updateContractOwner(address _newOwner) external override onlyPriceManager {
         require(_newOwner != address(0), "ExecutionPrice: invalid address for new owner.");
         require(_newOwner != owner, "ExecutionPrice: owner is the same.");
 

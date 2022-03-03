@@ -52,4 +52,12 @@ interface IExecutionPrice {
      * @param _owner address of the contract owner.
      */
     function initialize(uint256 _price, uint256 _maximumNumberOfInvestors, uint256 _tradingFee, uint256 _minimumOrderSize, address _owner) external;
+
+    /**
+     * @dev Updates the owner of this ExecutionPrice.
+     * @notice This function is meant to be called by the PriceManager contract whenever the
+     *          ExecutionPrice NFT is purchased by another user.
+     * @param _newOwner the new contract owner.
+     */
+    function updateContractOwner(address _newOwner) external;
 }

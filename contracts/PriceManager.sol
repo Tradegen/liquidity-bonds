@@ -9,6 +9,7 @@ import "./openzeppelin-solidity/contracts/ERC1155/ERC1155.sol";
 
 // Internal references
 import "./ExecutionPrice.sol";
+import "./interfaces/IExecutionPrice.sol";
 
 // Inheritance
 import "./interfaces/IPriceManager.sol";
@@ -129,6 +130,9 @@ contract PriceManager is IPriceManager, ERC1155 {
 
         IERC20(bondToken).safeTransferFrom(msg.sender, address(this), MINT_COST);
 
+        // Burn received bond tokens.
+        IERC20(bondToken).safeTransfer(address(0), MINT_COST);
+
         //Create ExecutionPrice contract and mint an NFT.
         address executionPriceAddress = address(new ExecutionPrice(TGEN, bondToken, marketplace, xTGEN));
         _mint(msg.sender, _index, 1, "");
@@ -147,6 +151,31 @@ contract PriceManager is IPriceManager, ERC1155 {
 
         emit Purchased(msg.sender, _index);
     }
+
+    /**
+    * @dev Transfers tokens from seller to buyer.
+    * @param from Address of the seller.
+    * @param to Address of the buyer.
+    * @param id The index of the ExecutionPrice contract.
+    * @param amount Number of tokens to transfer for the given ID. Expected to equal 1.
+    * @param data Bytes data
+    */
+    function safeTransferFrom(address from, address to, uint id, uint amount, bytes memory data) public override {
+        require(
+            from == _msgSender() || isApprovedForAll(from, _msgSender()),
+            "PriceManager: caller is not owner nor approved."
+        );
+        require(amount == 1, "PriceManager: amount must be 1.");
+        require(from == executionPrices[id].owner, "PriceManager: only the NFT owner can transfer.");
+
+        // Update the owner of the ExecutionPrice contract.
+        IExecutionPrice(executionPrices[id].contractAddress).updateContractOwner(to);
+
+        _safeTransferFrom(from, to, id, amount, data);
+    }
+
+    // Prevent transfer of multiple NFTs in one transaction.
+    function safeBatchTransferFrom(address from, address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) public override {}
 
     /* ========== MODIFIERS ========== */
 
