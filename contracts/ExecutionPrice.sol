@@ -241,27 +241,33 @@ contract ExecutionPrice is IExecutionPrice {
      */
     function _executeOrder(uint256 _amount) internal returns (uint256 totalFilledAmount) {
         uint256 filledAmount;
-        uint256 end = endIndex; // Save gas by getting endIndex once, instead of after each loop iteration.
+
+        // Save gas by getting endIndex once, instead of after each loop iteration.
+        uint256 start = startIndex;
+        uint256 end = endIndex;
+
         // Iterate over each open order until given order is filled or there's no more open orders.
         // This loop is bounded by 'maximumNumberOfInvestors', which cannot be more than 50.
-        for (uint256 i = startIndex; i < end; i++) {
-            filledAmount = (_amount.sub(totalFilledAmount) > orderBook[i].quantity.sub(orderBook[i].amountFilled)) ?
-                            orderBook[i].quantity.sub(orderBook[i].amountFilled) :
-                            orderBook[i].quantity.sub(orderBook[i].amountFilled).sub(_amount.sub(totalFilledAmount));
+        for (; start < end; start++) {
+            filledAmount = (_amount.sub(totalFilledAmount) > orderBook[start].quantity.sub(orderBook[start].amountFilled)) ?
+                            orderBook[start].quantity.sub(orderBook[start].amountFilled) :
+                            orderBook[start].quantity.sub(orderBook[start].amountFilled).sub(_amount.sub(totalFilledAmount));
             totalFilledAmount = totalFilledAmount.add(filledAmount);
-            orderBook[i].amountFilled.add(filledAmount);
+            orderBook[start].amountFilled = orderBook[start].amountFilled.add(filledAmount);
 
             if (isBuyQueue) {
-                TGEN.transfer(orderBook[i].user, filledAmount.mul(price).mul(10000 - tradingFee).div(1e18).div(10000));
+                TGEN.transfer(orderBook[start].user, filledAmount.mul(price).mul(10000 - tradingFee).div(1e18).div(10000));
             }
             else {
-                bondToken.transfer(orderBook[i].user, filledAmount.mul(10000 - tradingFee).div(10000));
+                bondToken.transfer(orderBook[start].user, filledAmount.mul(10000 - tradingFee).div(10000));
             }
 
             if (totalFilledAmount == _amount) {
                 break;
             }
         }
+
+        startIndex = start;
 
         // Send trading fee to contract owner.
         // If owner is the marketplace contract (NFT held in escrow while listed for sale), transfer TGEN to xTGEN contract
