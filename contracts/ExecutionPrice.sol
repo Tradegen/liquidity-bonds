@@ -92,7 +92,7 @@ contract ExecutionPrice is IExecutionPrice {
             // Queue becomes a 'buy queue' and this becomes the first order in the queue.
             if (filledAmount < _amount) {
                 isBuyQueue = !isBuyQueue;
-                _append(msg.sender, _amount);
+                _append(msg.sender, _amount.sub(filledAmount));
             }
 
             bondToken.safeTransfer(msg.sender, filledAmount);
@@ -119,7 +119,7 @@ contract ExecutionPrice is IExecutionPrice {
             // Queue becomes a 'sell queue' and this becomes the first order in the queue.
             if (filledAmount < _amount) {
                 isBuyQueue = !isBuyQueue;
-                _append(msg.sender, _amount);
+                _append(msg.sender, _amount.sub(filledAmount));
             }
 
             bondToken.safeTransfer(msg.sender, filledAmount);
