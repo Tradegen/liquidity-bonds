@@ -29,12 +29,13 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
     uint256 public constant MIN_AVERAGE_FOR_PERIOD = 1e21; // 1000 CELO
     uint256 public constant PERIOD_DURATION = 1 days;
 
-    IERC20 public rewardsToken; // TGEN token
-    IERC20 public collateralToken; // CELO token
+    IERC20 public immutable rewardsToken; // TGEN token
+    IERC20 public immutable collateralToken; // CELO token
     IReleaseEscrow public releaseEscrow;
-    IPriceAggregator public priceAggregator;
-    IRouter public router;
-    IUniswapV2Factory public ubeswapFactory;
+    IPriceAggregator public immutable priceAggregator;
+    IRouter public immutable router;
+    IUniswapV2Factory public immutable ubeswapFactory;
+    address public immutable xTGEN;
     
     uint256 public totalAvailableRewards;
     uint256 public rewardPerTokenStored;
@@ -47,12 +48,13 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
 
     /* ========== CONSTRUCTOR ========== */
 
-    constructor(address _rewardsToken, address _collateralTokenAddress, address _priceAggregatorAddress, address _routerAddress, address _factoryAddress) ERC20("LiquidityBond", "LB") {
+    constructor(address _rewardsToken, address _collateralTokenAddress, address _priceAggregatorAddress, address _routerAddress, address _factoryAddress, address _xTGEN) ERC20("LiquidityBond", "LB") {
         rewardsToken = IERC20(_rewardsToken);
         collateralToken = IERC20(_collateralTokenAddress);
         priceAggregator = IPriceAggregator(_priceAggregatorAddress);
         router = IRouter(_routerAddress);
         ubeswapFactory = IUniswapV2Factory(_factoryAddress);
+        xTGEN = _xTGEN;
         startTime = block.timestamp;
     }
 
@@ -113,8 +115,13 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
      */
     function getReward() public override nonReentrant releaseEscrowIsSet {
         uint256 availableRewards = releaseEscrow.withdraw();
-        _addReward(availableRewards);
-        _getReward();
+        if (totalSupply() == 0) {
+            rewardsToken.safeTransfer(xTGEN, availableRewards);
+        }
+        else {
+            _addReward(availableRewards);
+            _getReward();
+        }
     }
 
     /* ========== INTERNAL FUNCTIONS ========== */
