@@ -336,7 +336,7 @@ contract ExecutionPrice is IExecutionPrice {
      * @param _minimumOrderSize minimum number of bond tokens per order.
      * @param _owner address of the contract owner.
      */
-    function initialize(uint256 _price, uint256 _maximumNumberOfInvestors, uint256 _tradingFee, uint256 _minimumOrderSize, address _owner) external onlyPriceManager isNotInitialized {
+    function initialize(uint256 _price, uint256 _maximumNumberOfInvestors, uint256 _tradingFee, uint256 _minimumOrderSize, address _owner) external override onlyPriceManager isNotInitialized {
         require(IPriceManager(priceManager).executionPriceExists(address(this)), "ExecutionPrice: this contract is not registered in PriceManager.");
         require(_price > 0, "ExecutionPrice: price must be positive.");
         require(_maximumNumberOfInvestors >= MIN_MAXIMUM_NUMBER_OF_INVESTORS, "ExecutionPrice: maximum number of investors is too low.");

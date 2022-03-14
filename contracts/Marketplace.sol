@@ -68,7 +68,7 @@ contract Marketplace is IMarketplace, ERC1155Holder, Ownable {
     * @param _index Index of the marketplace listing
     * @return (address, bool, uint256, uint256) Address of the seller, whether the listing exists, NFT ID, and the price (in TGEN).
     */
-    function getMarketplaceListing(uint256 _index) external view indexInRange(_index) returns (address, bool, uint256, uint256) {
+    function getMarketplaceListing(uint256 _index) external view override indexInRange(_index) returns (address, bool, uint256, uint256) {
         MarketplaceListing memory listing = marketplaceListings[_index];
 
         return (listing.seller, listing.exists, listing.ID, listing.price);
