@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { parseEther } = require("@ethersproject/units");
-
+/*
 describe("UbeswapPathManager", () => {
   let deployer;
   let otherUser;
@@ -85,4 +85,4 @@ describe("UbeswapPathManager", () => {
         expect(path[1]).to.equal(testTokenAddress2);
     });
   });
-});
+});*/
