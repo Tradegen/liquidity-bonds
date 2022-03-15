@@ -84,7 +84,7 @@ contract ReleaseEscrow is ReentrancyGuard, IReleaseEscrow {
 
    /**
      * Withdraws tokens based on the current reward rate and the time since last withdrawal.
-     * @notice This function is called by the StakingRewards contract whenever a user claims rewards.
+     * @notice This function is called by the LiquidityBond contract whenever a user claims rewards.
      * @return uint256 Number of tokens claimed.
      */
     function withdraw() external override started onlyBeneficiary nonReentrant returns(uint256) {

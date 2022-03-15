@@ -14,7 +14,7 @@ import "./interfaces/ILiquidityBond.sol";
 
 // Interfaces
 import "./interfaces/IReleaseEscrow.sol";
-import "./interfaces/IPriceAggregator.sol";
+import "./interfaces/IPriceCalculator.sol";
 import "./interfaces/IRouter.sol";
 import "./interfaces/IUniswapV2Pair.sol";
 import "./interfaces/IUniswapV2Factory.sol";
@@ -32,7 +32,7 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
     IERC20 public immutable rewardsToken; // TGEN token
     IERC20 public immutable collateralToken; // CELO token
     IReleaseEscrow public releaseEscrow;
-    IPriceAggregator public immutable priceAggregator;
+    IPriceCalculator public immutable priceCalculator;
     IRouter public immutable router;
     IUniswapV2Factory public immutable ubeswapFactory;
     address public immutable xTGEN;
@@ -48,10 +48,10 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
 
     /* ========== CONSTRUCTOR ========== */
 
-    constructor(address _rewardsToken, address _collateralTokenAddress, address _priceAggregatorAddress, address _routerAddress, address _factoryAddress, address _xTGEN) ERC20("LiquidityBond", "LB") {
+    constructor(address _rewardsToken, address _collateralTokenAddress, address _priceCalculatorAddress, address _routerAddress, address _factoryAddress, address _xTGEN) ERC20("LiquidityBond", "LB") {
         rewardsToken = IERC20(_rewardsToken);
         collateralToken = IERC20(_collateralTokenAddress);
-        priceAggregator = IPriceAggregator(_priceAggregatorAddress);
+        priceCalculator = IPriceCalculator(_priceCalculatorAddress);
         router = IRouter(_routerAddress);
         ubeswapFactory = IUniswapV2Factory(_factoryAddress);
         xTGEN = _xTGEN;
@@ -100,7 +100,7 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
         collateralToken.safeTransfer(msg.sender, _amount.sub(usedCELO));
 
         uint256 amountOfBonusCollateral = _calculateBonusAmount(usedCELO);
-        uint256 dollarValue = priceAggregator.getUSDPrice(address(collateralToken)).mul(usedCELO.add(amountOfBonusCollateral)).div(10 ** 18);
+        uint256 dollarValue = priceCalculator.getUSDPrice(address(collateralToken)).mul(usedCELO.add(amountOfBonusCollateral)).div(10 ** 18);
         uint256 numberOfBondTokens = dollarValue.mul(10 ** 18).div(bondTokenPrice);
         uint256 initialFlooredSupply = totalSupply().div(10 ** 21);
 

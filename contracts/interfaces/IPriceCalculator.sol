@@ -2,6 +2,6 @@
 
 pragma solidity >=0.7.6;
 
-interface IPriceAggregator {
+interface IPriceCalculator {
     function getUSDPrice(address asset) external view returns (uint);
 }
