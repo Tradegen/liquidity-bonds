@@ -208,7 +208,7 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
      * @dev Calculates the number of bonus tokens to consider as collateral when minting bond tokens.
      * @notice The bonus multiplier for each period starts at +20% and falls linearly to +0% until max(1000, 1.1 * (totalSupply - amountStaked[n]) / (n-1))
      *          have been staked for the current period.
-     * @notice The final bonus amount is [multiplier/2 * availableTokens/maxTokens * availableCollateral].
+     * @notice The final bonus amount is [(c^2 - 2ac) / 10m].
      * @param _amountOfCollateral number of asset tokens to supply.
      */
     function _calculateBonusAmount(uint256 _amountOfCollateral) internal view returns (uint256) {
@@ -217,9 +217,9 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
                             ((totalSupply().sub(stakedAmounts[currentPeriodIndex])).mul(11).div(currentPeriodIndex).div(10) > MIN_AVERAGE_FOR_PERIOD) ?
                             totalSupply().sub(stakedAmounts[currentPeriodIndex]).mul(11).div(currentPeriodIndex).div(10) : MIN_AVERAGE_FOR_PERIOD;
         uint256 availableTokens = (stakedAmounts[currentPeriodIndex] >= maxTokens) ? 0 : maxTokens.sub(stakedAmounts[currentPeriodIndex]);
-        uint256 availableCollateral = (availableTokens > _amountOfCollateral) ? availableTokens.sub(_amountOfCollateral) : 0;
+        uint256 availableCollateral = (availableTokens > _amountOfCollateral) ? _amountOfCollateral : availableTokens;
 
-        return availableTokens.mul(3).mul(availableCollateral).div(5).div(maxTokens);
+        return ((availableCollateral.mul(availableCollateral)).sub(availableTokens.mul(availableCollateral).mul(2))).div(maxTokens.mul(10));
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */

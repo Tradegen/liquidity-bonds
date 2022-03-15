@@ -122,7 +122,7 @@ describe("LiquidityBond", () => {
   });
   
   describe("#calculateBonusAmount", () => {
-    it("none purchased for current period; buy half available", async () => {
+    it("none purchased for current period; buy half available; period 0", async () => {
         let tx = await tradegenToken.approve(routerAddress, parseEther("1000"));
         await tx.wait();
 
