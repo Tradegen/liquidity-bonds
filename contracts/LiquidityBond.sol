@@ -55,15 +55,22 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
         router = IRouter(_routerAddress);
         ubeswapFactory = IUniswapV2Factory(_factoryAddress);
         xTGEN = _xTGEN;
-        startTime = block.timestamp;
     }
 
     /* ========== VIEWS ========== */
 
-    function getPeriodIndex(uint256 _timestamp) public view returns (uint256) {
-        require(_timestamp > startTime, "LiquidityBond: timestamp must be greater than start time.");
+    /**
+     * @dev Returns whether the rewards have started.
+     */
+    function hasStarted() public view override returns (bool) {
+        return block.timestamp >= startTime;
+    }
 
-        return (startTime.sub(_timestamp)).div(PERIOD_DURATION);
+    /**
+     * @dev Returns the period index of the given timestamp.
+     */
+    function getPeriodIndex(uint256 _timestamp) public view override returns (uint256) {
+        return (_timestamp.sub(startTime)).div(PERIOD_DURATION);
     }
 
     /**
@@ -83,7 +90,7 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
      * @notice Sends unused collateral back to user.
      * @param _amount amount of collateral to deposit.
      */
-    function purchase(uint256 _amount) external override nonReentrant releaseEscrowIsSet updateReward(msg.sender) {
+    function purchase(uint256 _amount) external override nonReentrant releaseEscrowIsSet rewardsHaveStarted updateReward(msg.sender) {
         require(_amount > 0, "LiquidityBond: Amount must be positive.");
         require(_amount <= MAX_PURCHASE_AMOUNT, "LiquidityBond: Amount must be less than max purchase amount.");
 
@@ -113,7 +120,7 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
     /**
      * @dev Claims available rewards for the user.
      */
-    function getReward() public override nonReentrant releaseEscrowIsSet {
+    function getReward() public override nonReentrant releaseEscrowIsSet rewardsHaveStarted {
         uint256 availableRewards = releaseEscrow.withdraw();
         if (totalSupply() == 0) {
             rewardsToken.safeTransfer(xTGEN, availableRewards);
@@ -225,8 +232,9 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
         require(_releaseEscrow != address(0), "LiquidityBond: invalid address.");
 
         releaseEscrow = IReleaseEscrow(_releaseEscrow);
+        startTime = releaseEscrow.startTime();
 
-        emit SetReleaseEscrow(_releaseEscrow);
+        emit SetReleaseEscrow(_releaseEscrow, startTime);
     }
 
     /* ========== MODIFIERS ========== */
@@ -247,10 +255,15 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
         _;
     }
 
+    modifier rewardsHaveStarted() {
+        require(hasStarted(), "LiquidityBond: Rewards have not started.");
+        _;
+    }
+
     /* ========== EVENTS ========== */
 
     event RewardAdded(uint256 reward);
     event Purchased(address indexed user, uint256 amountDeposited, uint256 numberOfBondTokensReceived, uint256 bonus);
     event RewardPaid(address indexed user, uint256 reward);
-    event SetReleaseEscrow(address releaseEscrowAddress);
+    event SetReleaseEscrow(address releaseEscrowAddress, uint256 startTime);
 }

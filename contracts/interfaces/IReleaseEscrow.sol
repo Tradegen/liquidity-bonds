@@ -12,6 +12,11 @@ interface IReleaseEscrow {
     function hasStarted() external view returns (bool);
 
     /**
+     * Returns the timestamp at which tokens will start vesting.
+     */
+    function startTime() external view returns (uint256);
+
+    /**
      * Returns the total number of tokens that will be distributed.
      */
     function lifetimeRewards() external view returns (uint256);

@@ -7,6 +7,11 @@ pragma solidity ^0.8.3;
  */
 interface IReleaseSchedule {
     /**
+     * @dev Returns the timestamp at which rewards will start.
+     */
+    function distributionStartTime() external view returns (uint256);
+
+    /**
      * @dev Returns the total number of tokens that will be released in the given cycle.
      * @param _cycleIndex index of the cycle to check.
      * @return (uint256) total number of tokens released during the given cycle.

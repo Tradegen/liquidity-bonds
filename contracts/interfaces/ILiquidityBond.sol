@@ -6,6 +6,16 @@ interface ILiquidityBond {
     // Views
 
     /**
+     * @dev Returns whether the rewards have started.
+     */
+    function hasStarted() external view returns (bool);
+
+    /**
+     * @dev Returns the period index of the given timestamp.
+     */
+    function getPeriodIndex(uint256 _timestamp) external view returns (uint256);
+
+    /**
      * @dev Calculates the amount of unclaimed rewards the user has available.
      * @param _account address of the user.
      * @return (uint256) amount of available unclaimed rewards.

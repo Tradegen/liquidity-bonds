@@ -19,7 +19,7 @@ contract ReleaseEscrow is ReentrancyGuard, IReleaseEscrow {
     /* ========== STATE VARIABLES ========== */
 
     // When the release starts.
-    uint256 public immutable startTime;
+    uint256 public immutable override startTime;
 
     // Reward token contract address.
     IERC20 public immutable rewardToken;
@@ -41,16 +41,11 @@ contract ReleaseEscrow is ReentrancyGuard, IReleaseEscrow {
 
     /* ========== CONSTRUCTOR ========== */
 
-    /**
-     * @notice Release Schedule must have the same start time. 
-     */
-    constructor(address beneficiary_, address rewardToken_, address schedule_, uint256 startTime_) {
-        require(startTime_ > block.timestamp, "ReleaseEscrow: start time must be in the future");
-
+    constructor(address beneficiary_, address rewardToken_, address schedule_) {
         beneficiary = beneficiary_;
         rewardToken = IERC20(rewardToken_);
         schedule = IReleaseSchedule(schedule_);
-        startTime = startTime_;
+        startTime = IReleaseSchedule(schedule_).distributionStartTime();
         lastWithdrawalTime = IReleaseSchedule(schedule_).getStartOfCurrentCycle();
         lifetimeRewards = IReleaseSchedule(schedule_).getTokensForCycle(1).mul(2);
     }
@@ -61,7 +56,7 @@ contract ReleaseEscrow is ReentrancyGuard, IReleaseEscrow {
      * Returns true if release has already started.
      */
     function hasStarted() public view override returns (bool) {
-        return startTime < block.timestamp;
+        return block.timestamp >= startTime;
     }
 
     /**

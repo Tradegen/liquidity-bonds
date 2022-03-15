@@ -17,7 +17,7 @@ contract HalveningReleaseSchedule is IReleaseSchedule {
 
     uint256 public constant override cycleDuration = 26 weeks;
     uint256 public immutable firstCycleDistribution;
-    uint256 public immutable distributionStartTime;
+    uint256 public immutable override distributionStartTime;
 
     /* ========== CONSTRUCTOR ========== */
 
@@ -25,6 +25,8 @@ contract HalveningReleaseSchedule is IReleaseSchedule {
      * @param firstCycleDistribution_ Number of tokens to distribute in the first cycle.
      */
     constructor(uint256 firstCycleDistribution_, uint256 startTime_) {
+        require(startTime_ > block.timestamp, "HalveningReleaseSchedule: start time must be in the future");
+
         distributionStartTime = startTime_;
         firstCycleDistribution = firstCycleDistribution_;
     }
