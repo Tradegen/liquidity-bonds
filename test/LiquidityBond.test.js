@@ -61,10 +61,10 @@ describe("LiquidityBond", () => {
     PairDataFactory = await ethers.getContractFactory('PairData');
     PathManagerFactory = await ethers.getContractFactory('UbeswapPathManager');
     RouterFactory = await ethers.getContractFactory('Router');
-    PriceCalculatorFactory = await ethers.getContractFactory('PriceCalculator');
-    ReleaseScheduleFactory = await ethers.getContractFactory('ReleaseSchedule');
+    PriceCalculatorFactory = await ethers.getContractFactory('TestPriceCalculator');
+    ReleaseScheduleFactory = await ethers.getContractFactory('TestReleaseSchedule');
     ReleaseEscrowFactory = await ethers.getContractFactory('ReleaseEscrow');
-    LiquidityBondFactory = await ethers.getContractFactory('LiquidityBond');
+    LiquidityBondFactory = await ethers.getContractFactory('TestLiquidityBond');
 
     tradegenToken = await TestTokenFactory.deploy("Test TGEN", "TGEN");
     await tradegenToken.deployed();
@@ -121,30 +121,324 @@ describe("LiquidityBond", () => {
     await tx3.wait();
   });
   
-  describe("#calculateBonusAmount", () => {
-    it("none purchased for current period; buy half available; period 0", async () => {
-        let tx = await tradegenToken.approve(routerAddress, parseEther("1000"));
-        await tx.wait();
+  describe("#calculateBonusAmount", () => {/*
+    it("none purchased for current period; buy 1/2 of available tokens; period 0", async () => {
+      let currentTime = await pairData.getCurrentTime();
 
-        let tx2 = await mockCELO.approve(routerAddress, parseEther("10"));
-        await tx2.wait();
+      let tx = await liquidityBond.setStartTime(currentTime);
+      await tx.wait();
 
-        let tx3 = await router.addLiquidity(mockCELOAddress, parseEther("10"), parseEther("1000"));
-        let temp = await tx3.wait();
-        let event = temp.events[13].args;
-        expect(event.asset).to.equal(mockCELOAddress);
-        expect(event.amountAsset).to.equal(parseEther("10"));
-        expect(event.amountTGEN).to.equal(parseEther("1000"));
-        expect(event.numberOfLPTokens).to.equal(parseEther("10"));
+      let bonus = await liquidityBond.calculateBonusAmount(parseEther("500"));
+      expect(bonus).to.equal(parseEther("75"));
+    });
 
-        let pair = await ubeswapFactory.getPair(tradegenTokenAddress, mockCELOAddress);
+    it("none purchased for current period; buy 1/4 of available tokens; period 0", async () => {
+      let currentTime = await pairData.getCurrentTime();
 
-        let totalSupply = await pairData.getTotalSupply(pair);
-        expect(totalSupply).to.equal(parseEther("1010"));
+      let tx = await liquidityBond.setStartTime(currentTime);
+      await tx.wait();
 
-        let reserves = await pairData.getReserves(pair);
-        expect(reserves[0]).to.equal(parseEther("1010"));
-        expect(reserves[1]).to.equal(parseEther("1010"));
+      let bonus = await liquidityBond.calculateBonusAmount(parseEther("250"));
+      expect(bonus).to.equal(parseEther("43.75"));
+    });
+
+    it("none purchased for current period; buy all available tokens; period 0", async () => {
+      let currentTime = await pairData.getCurrentTime();
+
+      let tx = await liquidityBond.setStartTime(currentTime);
+      await tx.wait();
+
+      let bonus = await liquidityBond.calculateBonusAmount(parseEther("1300"));
+      expect(bonus).to.equal(parseEther("100"));
+    });
+
+    it("1/2 purchased for current period; buy all available tokens; period 0", async () => {
+      let currentTime = await pairData.getCurrentTime();
+
+      let tx = await liquidityBond.setStartTime(currentTime);
+      await tx.wait();
+
+      let tx2 = await liquidityBond.setStakedAmount(0, parseEther("500"));
+      await tx2.wait();
+
+      let bonus = await liquidityBond.calculateBonusAmount(parseEther("500"));
+      expect(bonus).to.equal(parseEther("25"));
+    });
+
+    it("1/2 purchased for current period; buy more tokens than available; period 0", async () => {
+      let currentTime = await pairData.getCurrentTime();
+
+      let tx = await liquidityBond.setStartTime(currentTime);
+      await tx.wait();
+
+      let tx2 = await liquidityBond.setStakedAmount(0, parseEther("500"));
+      await tx2.wait();
+
+      let bonus = await liquidityBond.calculateBonusAmount(parseEther("700"));
+      expect(bonus).to.equal(parseEther("25"));
+    });
+
+    it("1/2 purchased for current period; buy 1/2 of available tokens; period 0", async () => {
+      let currentTime = await pairData.getCurrentTime();
+
+      let tx = await liquidityBond.setStartTime(currentTime);
+      await tx.wait();
+
+      let tx2 = await liquidityBond.setStakedAmount(0, parseEther("500"));
+      await tx2.wait();
+
+      let bonus = await liquidityBond.calculateBonusAmount(parseEther("250"));
+      expect(bonus).to.equal(parseEther("18.75"));
+    });
+
+    it("1/4 purchased for current period; buy 1/4 of available tokens; period 0", async () => {
+      let currentTime = await pairData.getCurrentTime();
+
+      let tx = await liquidityBond.setStartTime(currentTime);
+      await tx.wait();
+
+      let tx2 = await liquidityBond.setStakedAmount(0, parseEther("250"));
+      await tx2.wait();
+
+      let bonus = await liquidityBond.calculateBonusAmount(parseEther("250"));
+      expect(bonus).to.equal(parseEther("31.25"));
+    });
+
+    it("1/4 purchased for current period; buy 1/2 of available tokens; period 0", async () => {
+      let currentTime = await pairData.getCurrentTime();
+
+      let tx = await liquidityBond.setStartTime(currentTime);
+      await tx.wait();
+
+      let tx2 = await liquidityBond.setStakedAmount(0, parseEther("250"));
+      await tx2.wait();
+
+      let bonus = await liquidityBond.calculateBonusAmount(parseEther("500"));
+      expect(bonus).to.equal(parseEther("50"));
+    });
+
+    it("all purchased for current period; period 0", async () => {
+      let currentTime = await pairData.getCurrentTime();
+
+      let tx = await liquidityBond.setStartTime(currentTime);
+      await tx.wait();
+
+      let tx2 = await liquidityBond.setStakedAmount(0, parseEther("1200"));
+      await tx2.wait();
+
+      let bonus = await liquidityBond.calculateBonusAmount(parseEther("500"));
+      expect(bonus).to.equal(0);
+    });
+
+    it("none purchased previous period; none purchased current period; buy 1/2 of available tokens", async () => {
+      let currentTime = await pairData.getCurrentTime();
+
+      let tx = await liquidityBond.setStartTime(currentTime - 86500);
+      await tx.wait();
+
+      let bonus = await liquidityBond.calculateBonusAmount(parseEther("500"));
+      expect(bonus).to.equal(parseEther("75"));
+    });
+
+    it("none purchased previous period; none purchased current period; buy all available tokens", async () => {
+      let currentTime = await pairData.getCurrentTime();
+
+      let tx = await liquidityBond.setStartTime(currentTime - 86500);
+      await tx.wait();
+
+      let bonus = await liquidityBond.calculateBonusAmount(parseEther("1200"));
+      expect(bonus).to.equal(parseEther("100"));
+    });
+
+    it("none purchased previous period; 1/2 purchased current period; buy 1/2 of available tokens", async () => {
+      let currentTime = await pairData.getCurrentTime();
+
+      let tx = await liquidityBond.setStartTime(currentTime - 86500);
+      await tx.wait();
+
+      let tx2 = await liquidityBond.setStakedAmount(1, parseEther("500"));
+      await tx2.wait();
+
+      let tx3 = await liquidityBond.testMint(pairDataAddress, parseEther("500"));
+      await tx3.wait();
+
+      let bonus = await liquidityBond.calculateBonusAmount(parseEther("250"));
+      expect(bonus).to.equal(parseEther("18.75"));
+    });
+
+    it("none purchased previous period; 1/2 purchased current period; buy all available tokens", async () => {
+      let currentTime = await pairData.getCurrentTime();
+
+      let tx = await liquidityBond.setStartTime(currentTime - 86500);
+      await tx.wait();
+
+      let tx2 = await liquidityBond.setStakedAmount(1, parseEther("500"));
+      await tx2.wait();
+
+      let tx3 = await liquidityBond.testMint(pairDataAddress, parseEther("500"));
+      await tx3.wait();
+
+      let bonus = await liquidityBond.calculateBonusAmount(parseEther("700"));
+      expect(bonus).to.equal(parseEther("25"));
+    });
+
+    it("< min average purchased previous period; none purchased current period; buy 1/2 of available tokens", async () => {
+      let currentTime = await pairData.getCurrentTime();
+
+      let tx = await liquidityBond.setStartTime(currentTime - 86500);
+      await tx.wait();
+
+      let tx2 = await liquidityBond.setStakedAmount(0, parseEther("500"));
+      await tx2.wait();
+
+      let tx3 = await liquidityBond.testMint(pairDataAddress, parseEther("500"));
+      await tx3.wait();
+
+      let bonus = await liquidityBond.calculateBonusAmount(parseEther("500"));
+      expect(bonus).to.equal(parseEther("75"));
+    });
+
+    it("< min average purchased previous period; none purchased current period; buy all available tokens", async () => {
+      let currentTime = await pairData.getCurrentTime();
+
+      let tx = await liquidityBond.setStartTime(currentTime - 86500);
+      await tx.wait();
+
+      let tx2 = await liquidityBond.setStakedAmount(0, parseEther("500"));
+      await tx2.wait();
+
+      let tx3 = await liquidityBond.testMint(pairDataAddress, parseEther("500"));
+      await tx3.wait();
+
+      let bonus = await liquidityBond.calculateBonusAmount(parseEther("1000"));
+      expect(bonus).to.equal(parseEther("100"));
+    });
+
+    it("< min average purchased previous period; 1/2 purchased current period; buy 1/2 of available tokens", async () => {
+      let currentTime = await pairData.getCurrentTime();
+
+      let tx = await liquidityBond.setStartTime(currentTime - 86500);
+      await tx.wait();
+
+      let tx2 = await liquidityBond.setStakedAmount(0, parseEther("500"));
+      await tx2.wait();
+
+      let tx3 = await liquidityBond.setStakedAmount(1, parseEther("500"));
+      await tx3.wait();
+
+      let tx4 = await liquidityBond.testMint(pairDataAddress, parseEther("1000"));
+      await tx4.wait();
+
+      let bonus = await liquidityBond.calculateBonusAmount(parseEther("250"));
+      expect(bonus).to.equal(parseEther("18.75"));
+    });
+
+    it("< min average purchased previous period; 1/2 purchased current period; buy all available tokens", async () => {
+      let currentTime = await pairData.getCurrentTime();
+
+      let tx = await liquidityBond.setStartTime(currentTime - 86500);
+      await tx.wait();
+
+      let tx2 = await liquidityBond.setStakedAmount(0, parseEther("500"));
+      await tx2.wait();
+
+      let tx3 = await liquidityBond.setStakedAmount(1, parseEther("500"));
+      await tx3.wait();
+
+      let tx4 = await liquidityBond.testMint(pairDataAddress, parseEther("1000"));
+      await tx4.wait();
+
+      let bonus = await liquidityBond.calculateBonusAmount(parseEther("1000"));
+      expect(bonus).to.equal(parseEther("25"));
+    });
+
+    it("< min average purchased previous period; all purchased current period", async () => {
+      let currentTime = await pairData.getCurrentTime();
+
+      let tx = await liquidityBond.setStartTime(currentTime - 86500);
+      await tx.wait();
+
+      let tx2 = await liquidityBond.setStakedAmount(0, parseEther("500"));
+      await tx2.wait();
+
+      let tx3 = await liquidityBond.setStakedAmount(1, parseEther("1200"));
+      await tx3.wait();
+
+      let tx4 = await liquidityBond.testMint(pairDataAddress, parseEther("1700"));
+      await tx4.wait();
+
+      let bonus = await liquidityBond.calculateBonusAmount(parseEther("1000"));
+      expect(bonus).to.equal(0);
+    });
+
+    it("> min average purchased previous period; none purchased current period; buy 1/2 of available tokens", async () => {
+      let currentTime = await pairData.getCurrentTime();
+
+      let tx = await liquidityBond.setStartTime(currentTime - 86500);
+      await tx.wait();
+
+      let tx2 = await liquidityBond.setStakedAmount(0, parseEther("2000"));
+      await tx2.wait();
+
+      let tx3 = await liquidityBond.testMint(pairDataAddress, parseEther("2000"));
+      await tx3.wait();
+
+      let bonus = await liquidityBond.calculateBonusAmount(parseEther("1100"));
+      expect(bonus).to.equal(parseEther("165"));
+    });
+
+    it("> min average purchased previous period; none purchased current period; buy all available tokens", async () => {
+      let currentTime = await pairData.getCurrentTime();
+
+      let tx = await liquidityBond.setStartTime(currentTime - 86500);
+      await tx.wait();
+
+      let tx2 = await liquidityBond.setStakedAmount(0, parseEther("2000"));
+      await tx2.wait();
+
+      let tx3 = await liquidityBond.testMint(pairDataAddress, parseEther("2000"));
+      await tx3.wait();
+
+      let bonus = await liquidityBond.calculateBonusAmount(parseEther("3000"));
+      expect(bonus).to.equal(parseEther("220"));
+    });*/
+
+    it("> min average purchased previous period; 1/2 purchased current period; buy 1/2 available tokens", async () => {
+      let currentTime = await pairData.getCurrentTime();
+
+      let tx = await liquidityBond.setStartTime(currentTime - 86500);
+      await tx.wait();
+
+      let tx2 = await liquidityBond.setStakedAmount(0, parseEther("2000"));
+      await tx2.wait();
+
+      let tx3 = await liquidityBond.setStakedAmount(1, parseEther("1100"));
+      await tx3.wait();
+
+      let tx4 = await liquidityBond.testMint(pairDataAddress, parseEther("3100"));
+      await tx4.wait();
+
+      let bonus = await liquidityBond.calculateBonusAmount(parseEther("550"));
+      expect(bonus).to.equal(parseEther("41.25"));
+    });
+
+    it("> min average purchased previous period; 1/2 purchased current period; buy all available tokens", async () => {
+      let currentTime = await pairData.getCurrentTime();
+
+      let tx = await liquidityBond.setStartTime(currentTime - 86500);
+      await tx.wait();
+
+      let tx2 = await liquidityBond.setStakedAmount(0, parseEther("2000"));
+      await tx2.wait();
+
+      let tx3 = await liquidityBond.setStakedAmount(1, parseEther("1100"));
+      await tx3.wait();
+
+      let tx4 = await liquidityBond.testMint(pairDataAddress, parseEther("3100"));
+      await tx4.wait();
+
+      let bonus = await liquidityBond.calculateBonusAmount(parseEther("2000"));
+      expect(bonus).to.equal(parseEther("55"));
     });
   });
 });
