@@ -5,8 +5,6 @@ pragma solidity ^0.8.3;
 import "../LiquidityBond.sol";
 
 contract TestLiquidityBond is LiquidityBond {
-    uint256 public collateralUsed;
-
     constructor(address _rewardsToken, address _collateralTokenAddress, address _lpPair, address _priceAggregatorAddress, address _routerAddress, address _ubeswapRouterAddress, address _xTGEN)
         LiquidityBond(_rewardsToken, _collateralTokenAddress, _lpPair, _priceAggregatorAddress, _routerAddress, _ubeswapRouterAddress, _xTGEN)
     {
@@ -17,7 +15,7 @@ contract TestLiquidityBond is LiquidityBond {
     }
 
     function addLiquidity(uint256 _amountOfCollateral) external {
-        collateralUsed = _addLiquidity(_amountOfCollateral);
+        _addLiquidity(_amountOfCollateral);
     }
 
     function setStartTime(uint256 _startTime) external {

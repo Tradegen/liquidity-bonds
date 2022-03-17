@@ -31,4 +31,8 @@ contract PairData {
     function getCurrentTime() external view returns (uint256) {
         return block.timestamp;
     }
+
+    function token0(address _pair) external view returns (address) {
+        return IUniswapV2Pair(_pair).token0();
+    }
 }

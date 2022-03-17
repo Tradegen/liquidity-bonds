@@ -145,7 +145,10 @@ s     * @param _amount amount of collateral to deposit.
      *
      * To learn more about hooks, head to xref:ROOT:extending-contracts.adoc#using-hooks[Using Hooks].
      */
-    function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual override updateReward(from) updateReward(to) { }
+    function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual override updateReward(from) updateReward(to) {
+        require(from != address(0), "LiquidityBond: invalid address for 'from'.");
+        require(to != address(0), "LiquidityBond: invalid address for 'to'.");
+     }
 
     /* ========== INTERNAL FUNCTIONS ========== */
 

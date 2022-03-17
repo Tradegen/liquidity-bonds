@@ -450,24 +450,56 @@ describe("LiquidityBond", () => {
     });
   });*/
 
-  describe("#addLiquidity", () => { 
+  describe("#addLiquidity", () => { /*
     it("low slippage", async () => {
-      let tx = await mockCELO.transfer(liquidityBondAddress, parseEther("100"));
+      let tx = await mockCELO.transfer(liquidityBondAddress, parseEther("10"));
       await tx.wait();
 
-      let tx2 = await liquidityBond.addLiquidity(parseEther("100"));
+      let tx2 = await liquidityBond.addLiquidity(parseEther("10"));
       await tx2.wait();
 
-      let usedCELO = await liquidityBond.collateralUsed();
-      console.log(usedCELO.toString());
-
-      let balanceTGEN = await tradegenToken.balanceOf(liquidityBondAddress);
-      console.log(balanceTGEN.toString());
+      let balanceTGEN = await tradegenToken.balanceOf(pairDataAddress);
+      expect(balanceTGEN).to.equal("9826636109541201"); // 0.98 TGEN
 
       let pair = await ubeswapFactory.getPair(tradegenTokenAddress, mockCELOAddress);
 
       let reserves = await pairData.getReserves(pair);
-      console.log(reserves);
+      expect(reserves[0]).to.equal("1009999999999999999999"); // 1009.99 TGEN
+      expect(reserves[1]).to.equal("999990173363890458799"); // 999.9901 TGEN 
+    });
+
+    it("moderate slippage", async () => {
+      let tx = await mockCELO.transfer(liquidityBondAddress, parseEther("200"));
+      await tx.wait();
+
+      let tx2 = await liquidityBond.addLiquidity(parseEther("200"));
+      await tx2.wait();
+
+      let balanceTGEN = await tradegenToken.balanceOf(pairDataAddress);
+      expect(balanceTGEN).to.equal("7993915696016268900"); // 79.9391 TGEN
+
+      let pair = await ubeswapFactory.getPair(tradegenTokenAddress, mockCELOAddress);
+
+      let reserves = await pairData.getReserves(pair);
+      expect(reserves[0]).to.equal("1199999999999999999999"); // 1199.99 TGEN
+      expect(reserves[1]).to.equal("992006084303983731100"); // 992.006 TGEN 
+    });*/
+
+    it("high slippage", async () => {
+      let tx = await mockCELO.transfer(liquidityBondAddress, parseEther("3000"));
+      await tx.wait();
+
+      let tx2 = await liquidityBond.addLiquidity(parseEther("3000"));
+      await tx2.wait();
+
+      let balanceTGEN = await tradegenToken.balanceOf(pairDataAddress);
+      expect(balanceTGEN).to.equal("358845922660789420957"); // 358.8459 TGEN
+
+      let pair = await ubeswapFactory.getPair(tradegenTokenAddress, mockCELOAddress);
+
+      let reserves = await pairData.getReserves(pair);
+      expect(reserves[0]).to.equal("3999999999999999999998"); // 3999.99 TGEN
+      expect(reserves[1]).to.equal("641154077339210579043"); // 641.154 TGEN 
     });
   });
 });
