@@ -25,7 +25,7 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
 
     /* ========== STATE VARIABLES ========== */
 
-    uint256 public constant MAX_PURCHASE_AMOUNT = 1000;
+    uint256 public constant MAX_PURCHASE_AMOUNT = 1e21; // 1000 CELO
     uint256 public constant MIN_AVERAGE_FOR_PERIOD = 1e21; // 1000 CELO
     uint256 public constant PERIOD_DURATION = 1 days;
 
@@ -39,8 +39,9 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
     address public immutable xTGEN;
     
     uint256 public totalAvailableRewards;
+    uint256 public totalStakedAmount;
     uint256 public rewardPerTokenStored;
-    uint256 public bondTokenPrice; // Price of 1 bond token in USD
+    uint256 public bondTokenPrice = 1e18; // Price of 1 bond token in USD
     uint256 public startTime;
 
     mapping(uint256 => uint256) public stakedAmounts; // Period index => amount of CELO staked
@@ -89,7 +90,7 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
     /**
      * @dev Purchases liquidity bonds.
      * @notice Swaps 1/2 of collateral for TGEN and adds liquidity.
-s     * @param _amount amount of collateral to deposit.
+     * @param _amount amount of collateral to deposit.
      */
     function purchase(uint256 _amount) external override nonReentrant releaseEscrowIsSet rewardsHaveStarted updateReward(msg.sender) {
         require(_amount > 0, "LiquidityBond: Amount must be positive.");
@@ -106,6 +107,7 @@ s     * @param _amount amount of collateral to deposit.
 
         // Add original collateral amount to staked amount for current period; don't include bonus amount.
         stakedAmounts[getPeriodIndex(block.timestamp)] = stakedAmounts[getPeriodIndex(block.timestamp)].add(_amount);
+        totalStakedAmount = totalStakedAmount.add(_amount);
 
         // Increase total supply and transfer bond tokens to buyer.
         _mint(msg.sender, numberOfBondTokens);
@@ -145,10 +147,7 @@ s     * @param _amount amount of collateral to deposit.
      *
      * To learn more about hooks, head to xref:ROOT:extending-contracts.adoc#using-hooks[Using Hooks].
      */
-    function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual override updateReward(from) updateReward(to) {
-        require(from != address(0), "LiquidityBond: invalid address for 'from'.");
-        require(to != address(0), "LiquidityBond: invalid address for 'to'.");
-     }
+    function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual override updateReward(from) updateReward(to) {}
 
     /* ========== INTERNAL FUNCTIONS ========== */
 
@@ -218,8 +217,8 @@ s     * @param _amount amount of collateral to deposit.
         uint256 currentPeriodIndex = getPeriodIndex(block.timestamp);
         
         uint256 maxTokens = (currentPeriodIndex == 0) ? MIN_AVERAGE_FOR_PERIOD :
-                            ((totalSupply().sub(stakedAmounts[currentPeriodIndex])).mul(11).div(currentPeriodIndex).div(10) > MIN_AVERAGE_FOR_PERIOD) ?
-                            totalSupply().sub(stakedAmounts[currentPeriodIndex]).mul(11).div(currentPeriodIndex).div(10) : MIN_AVERAGE_FOR_PERIOD;
+                            ((totalStakedAmount.sub(stakedAmounts[currentPeriodIndex])).mul(11).div(currentPeriodIndex).div(10) > MIN_AVERAGE_FOR_PERIOD) ?
+                            totalStakedAmount.sub(stakedAmounts[currentPeriodIndex]).mul(11).div(currentPeriodIndex).div(10) : MIN_AVERAGE_FOR_PERIOD;
         uint256 availableTokens = (stakedAmounts[currentPeriodIndex] >= maxTokens) ? 0 : maxTokens.sub(stakedAmounts[currentPeriodIndex]);
         uint256 availableCollateral = (availableTokens > _amountOfCollateral) ? _amountOfCollateral : availableTokens;
         return ((availableTokens.mul(availableCollateral).mul(2).div(1e18)).sub(availableCollateral.mul(availableCollateral).div(1e18))).mul(1e18).div(maxTokens.mul(10));

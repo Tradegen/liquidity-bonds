@@ -29,4 +29,8 @@ contract TestLiquidityBond is LiquidityBond {
     function testMint(address _to, uint256 _amount) external {
         _mint(_to, _amount);
     }
+
+    function setTotalStakedAmount(uint256 _stakedAmount) external {
+        totalStakedAmount = _stakedAmount;
+    }
 }
