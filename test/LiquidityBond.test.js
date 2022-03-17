@@ -85,6 +85,12 @@ describe("LiquidityBond", () => {
     priceCalculator = await PriceCalculatorFactory.deploy();
     await priceCalculator.deployed();
     priceCalculatorAddress = priceCalculator.address;
+
+    let tx = await pathManager.setPath(mockCELOAddress, tradegenTokenAddress, [mockCELOAddress, tradegenTokenAddress]);
+    await tx.wait();
+
+    let tx2 = await pathManager.setPath(tradegenTokenAddress, mockCELOAddress, [tradegenTokenAddress, mockCELOAddress]);
+    await tx2.wait();
   });
 
   beforeEach(async () => {
@@ -104,10 +110,6 @@ describe("LiquidityBond", () => {
     await router.deployed();
     routerAddress = router.address;
 
-    liquidityBond = await LiquidityBondFactory.deploy(tradegenTokenAddress, mockCELOAddress, priceCalculatorAddress, routerAddress, ubeswapFactoryAddress, pairDataAddress);
-    await liquidityBond.deployed();
-    liquidityBondAddress = liquidityBond.address;
-
     let currentTime = await pairData.getCurrentTime();
 
     let tx = await tradegenToken.approve(ubeswapRouterAddress, parseEther("1000"));
@@ -119,9 +121,15 @@ describe("LiquidityBond", () => {
     // Create TGEN-CELO pair and supply seed liquidity.
     let tx3 = await ubeswapRouter.addLiquidity(tradegenTokenAddress, mockCELOAddress, parseEther("1000"), parseEther("1000"), 0, 0, deployer.address, Number(currentTime) + 1000);
     await tx3.wait();
+
+    let pair = await ubeswapFactory.getPair(tradegenTokenAddress, mockCELOAddress);
+
+    liquidityBond = await LiquidityBondFactory.deploy(tradegenTokenAddress, mockCELOAddress, pair, priceCalculatorAddress, routerAddress, ubeswapRouterAddress, pairDataAddress);
+    await liquidityBond.deployed();
+    liquidityBondAddress = liquidityBond.address;
   });
-  
-  describe("#calculateBonusAmount", () => {/*
+  /*
+  describe("#calculateBonusAmount", () => {
     it("none purchased for current period; buy 1/2 of available tokens; period 0", async () => {
       let currentTime = await pairData.getCurrentTime();
 
@@ -401,7 +409,7 @@ describe("LiquidityBond", () => {
 
       let bonus = await liquidityBond.calculateBonusAmount(parseEther("3000"));
       expect(bonus).to.equal(parseEther("220"));
-    });*/
+    });
 
     it("> min average purchased previous period; 1/2 purchased current period; buy 1/2 available tokens", async () => {
       let currentTime = await pairData.getCurrentTime();
@@ -439,6 +447,27 @@ describe("LiquidityBond", () => {
 
       let bonus = await liquidityBond.calculateBonusAmount(parseEther("2000"));
       expect(bonus).to.equal(parseEther("55"));
+    });
+  });*/
+
+  describe("#addLiquidity", () => { 
+    it("low slippage", async () => {
+      let tx = await mockCELO.transfer(liquidityBondAddress, parseEther("100"));
+      await tx.wait();
+
+      let tx2 = await liquidityBond.addLiquidity(parseEther("100"));
+      await tx2.wait();
+
+      let usedCELO = await liquidityBond.collateralUsed();
+      console.log(usedCELO.toString());
+
+      let balanceTGEN = await tradegenToken.balanceOf(liquidityBondAddress);
+      console.log(balanceTGEN.toString());
+
+      let pair = await ubeswapFactory.getPair(tradegenTokenAddress, mockCELOAddress);
+
+      let reserves = await pairData.getReserves(pair);
+      console.log(reserves);
     });
   });
 });

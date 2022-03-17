@@ -17,7 +17,7 @@ import "./interfaces/IReleaseEscrow.sol";
 import "./interfaces/IPriceCalculator.sol";
 import "./interfaces/IRouter.sol";
 import "./interfaces/IUniswapV2Pair.sol";
-import "./interfaces/IUniswapV2Factory.sol";
+import './interfaces/IUniswapV2Router02.sol';
 
 contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
     using SafeMath for uint256;
@@ -31,10 +31,11 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
 
     IERC20 public immutable rewardsToken; // TGEN token
     IERC20 public immutable collateralToken; // CELO token
+    IUniswapV2Pair public immutable lpPair; // TGEN-CELO LP pair on Ubeswap
     IReleaseEscrow public releaseEscrow;
     IPriceCalculator public immutable priceCalculator;
     IRouter public immutable router;
-    IUniswapV2Factory public immutable ubeswapFactory;
+    IUniswapV2Router02 public immutable ubeswapRouter;
     address public immutable xTGEN;
     
     uint256 public totalAvailableRewards;
@@ -48,12 +49,13 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
 
     /* ========== CONSTRUCTOR ========== */
 
-    constructor(address _rewardsToken, address _collateralTokenAddress, address _priceCalculatorAddress, address _routerAddress, address _factoryAddress, address _xTGEN) ERC20("LiquidityBond", "LB") {
+    constructor(address _rewardsToken, address _collateralTokenAddress, address _lpPair, address _priceCalculatorAddress, address _routerAddress, address _ubeswapRouterAddress, address _xTGEN) ERC20("LiquidityBond", "LB") {
         rewardsToken = IERC20(_rewardsToken);
         collateralToken = IERC20(_collateralTokenAddress);
+        lpPair = IUniswapV2Pair(_lpPair);
         priceCalculator = IPriceCalculator(_priceCalculatorAddress);
         router = IRouter(_routerAddress);
-        ubeswapFactory = IUniswapV2Factory(_factoryAddress);
+        ubeswapRouter = IUniswapV2Router02(_ubeswapRouterAddress);
         xTGEN = _xTGEN;
     }
 
@@ -87,8 +89,7 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
     /**
      * @dev Purchases liquidity bonds.
      * @notice Swaps 1/2 of collateral for TGEN and adds liquidity.
-     * @notice Sends unused collateral back to user.
-     * @param _amount amount of collateral to deposit.
+s     * @param _amount amount of collateral to deposit.
      */
     function purchase(uint256 _amount) external override nonReentrant releaseEscrowIsSet rewardsHaveStarted updateReward(msg.sender) {
         require(_amount > 0, "LiquidityBond: Amount must be positive.");
@@ -96,16 +97,15 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
 
         // Use the deposited collateral to add liquidity for TGEN-CELO.
         collateralToken.safeTransferFrom(msg.sender, address(this), _amount);
-        uint256 usedCELO = _addLiquidity(_amount);
-        collateralToken.safeTransfer(msg.sender, _amount.sub(usedCELO));
+        _addLiquidity(_amount);
 
-        uint256 amountOfBonusCollateral = _calculateBonusAmount(usedCELO);
-        uint256 dollarValue = priceCalculator.getUSDPrice(address(collateralToken)).mul(usedCELO.add(amountOfBonusCollateral)).div(10 ** 18);
+        uint256 amountOfBonusCollateral = _calculateBonusAmount(_amount);
+        uint256 dollarValue = priceCalculator.getUSDPrice(address(collateralToken)).mul(_amount.add(amountOfBonusCollateral)).div(10 ** 18);
         uint256 numberOfBondTokens = dollarValue.mul(10 ** 18).div(bondTokenPrice);
         uint256 initialFlooredSupply = totalSupply().div(10 ** 21);
 
         // Add original collateral amount to staked amount for current period; don't include bonus amount.
-        stakedAmounts[getPeriodIndex(block.timestamp)] = stakedAmounts[getPeriodIndex(block.timestamp)].add(usedCELO);
+        stakedAmounts[getPeriodIndex(block.timestamp)] = stakedAmounts[getPeriodIndex(block.timestamp)].add(_amount);
 
         // Increase total supply and transfer bond tokens to buyer.
         _mint(msg.sender, numberOfBondTokens);
@@ -114,7 +114,7 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
         uint256 delta = (totalSupply().div(10 ** 21)).sub(initialFlooredSupply);
         bondTokenPrice = bondTokenPrice.mul(101 ** delta).div(100 ** delta);
 
-        emit Purchased(msg.sender, usedCELO, numberOfBondTokens, amountOfBonusCollateral);
+        emit Purchased(msg.sender, _amount, numberOfBondTokens, amountOfBonusCollateral);
     }
 
     /**
@@ -178,30 +178,30 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
 
     /**
      * @dev Supplies liquidity for TGEN-CELO pair.
+     * @notice Transfers unused TGEN to xTGEN contract.
      * @param _amountOfCollateral number of asset tokens to supply.
-     * @return (uint256) number of asset tokens used; takes slippage and exchange fees into account.
      */
-    function _addLiquidity(uint256 _amountOfCollateral) internal returns (uint256) {
+    function _addLiquidity(uint256 _amountOfCollateral) internal {
         collateralToken.approve(address(router), _amountOfCollateral.div(2));
-        uint256 numberOfTGEN = router.swapAssetForTGEN(address(collateralToken), _amountOfCollateral.div(2));
+        uint256 receivedTGEN = router.swapAssetForTGEN(address(collateralToken), _amountOfCollateral.div(2));
 
-        address pair = ubeswapFactory.getPair(address(rewardsToken), address(collateralToken));
-        address token0 = IUniswapV2Pair(pair).token0();
-        (uint112 reserve0, uint112 reserve1,) = IUniswapV2Pair(pair).getReserves();
+        address token0 = lpPair.token0();
+        (uint112 reserve0, uint112 reserve1,) = lpPair.getReserves();
 
-        uint256 neededCELO;
+        uint256 neededTGEN;
         if (token0 == address(rewardsToken)) {
-            neededCELO = numberOfTGEN.mul(uint256(reserve1)).div(uint256(reserve0));
+            neededTGEN = ubeswapRouter.quote(_amountOfCollateral.div(2), reserve1, reserve0);
         }
         else {
-            neededCELO = numberOfTGEN.mul(uint256(reserve0)).div(uint256(reserve1));
+            neededTGEN = ubeswapRouter.quote(_amountOfCollateral.div(2), reserve0, reserve1);
         }
+        
+        collateralToken.approve(address(router), _amountOfCollateral.div(2));
+        rewardsToken.approve(address(router), neededTGEN);
+        router.addLiquidity(address(collateralToken), _amountOfCollateral.div(2), neededTGEN);
 
-        collateralToken.approve(address(router), neededCELO);
-        rewardsToken.approve(address(router), numberOfTGEN);
-        router.addLiquidity(address(collateralToken), neededCELO, numberOfTGEN);
-
-        return neededCELO.mul(2);
+        // Transfer unused TGEN to xTGEN contract.
+        rewardsToken.safeTransfer(xTGEN, receivedTGEN.sub(neededTGEN));
     }
 
     /**

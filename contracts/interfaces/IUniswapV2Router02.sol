@@ -49,4 +49,6 @@ interface IUniswapV2Router02 {
         address to,
         uint deadline
     ) external returns (uint amountA, uint amountB);
+
+  function quote(uint amountA, uint reserveA, uint reserveB) external pure returns (uint amountB);
 }

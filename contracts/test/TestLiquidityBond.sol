@@ -5,10 +5,10 @@ pragma solidity ^0.8.3;
 import "../LiquidityBond.sol";
 
 contract TestLiquidityBond is LiquidityBond {
-    uint256 collateralUsed;
+    uint256 public collateralUsed;
 
-    constructor(address _rewardsToken, address _collateralTokenAddress, address _priceAggregatorAddress, address _routerAddress, address _factoryAddress, address _xTGEN)
-        LiquidityBond(_rewardsToken, _collateralTokenAddress, _priceAggregatorAddress, _routerAddress, _factoryAddress, _xTGEN)
+    constructor(address _rewardsToken, address _collateralTokenAddress, address _lpPair, address _priceAggregatorAddress, address _routerAddress, address _ubeswapRouterAddress, address _xTGEN)
+        LiquidityBond(_rewardsToken, _collateralTokenAddress, _lpPair, _priceAggregatorAddress, _routerAddress, _ubeswapRouterAddress, _xTGEN)
     {
     }
 
