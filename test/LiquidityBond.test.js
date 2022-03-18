@@ -702,9 +702,9 @@ describe("LiquidityBond", () => {
       let totalStakedAmount = await liquidityBond.totalStakedAmount();
       expect(totalStakedAmount).to.equal(parseEther("1900"));
     });
-  });*/
+  });
 
-  describe("#getReward", () => {/*
+  describe("#getReward", () => {
     it("release escrow not set", async () => {
       let initialBalance = await tradegenToken.balanceOf(pairDataAddress);
 
@@ -899,7 +899,7 @@ describe("LiquidityBond", () => {
       let newBalanceOther = await tradegenToken.balanceOf(otherUser.address);
       let expectedNewBalanceOther = BigInt(initialBalanceOther) + BigInt("32051282051280000");
       expect(newBalanceOther.toString()).to.equal(expectedNewBalanceOther.toString());
-    });*/
+    });
 
     it("no other investors, reward available, purchase again without getting reward", async () => {
       let currentTime = await pairData.getCurrentTime();
@@ -957,7 +957,7 @@ describe("LiquidityBond", () => {
       expect(earnedDeployer).to.equal(0);
     });
   });
-  /*
+  
   describe("#beforeTokenTransfer", () => {
     it("recipient has no tokens", async () => {
       let currentTime = await pairData.getCurrentTime();

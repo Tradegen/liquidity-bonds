@@ -38,8 +38,8 @@ contract ExecutionPrice is IExecutionPrice {
     uint256 public maximumNumberOfInvestors;
 
     address public owner;
-    uint256 public tradingFee;
-    uint256 public minimumOrderSize;
+    uint256 public tradingFee = 50;
+    uint256 public minimumOrderSize = 1e16;
 
     uint256 public startIndex;
     uint256 public endIndex;
