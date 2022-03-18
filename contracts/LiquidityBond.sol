@@ -82,7 +82,7 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
      * @return (uint256) amount of available unclaimed rewards.
      */
     function earned(address _account) public view override returns (uint256) {
-        return balanceOf(_account).mul(rewardPerTokenStored.sub(userRewardPerTokenPaid[_account])).add(rewards[_account]);
+        return (balanceOf(_account).mul(rewardPerTokenStored.sub(userRewardPerTokenPaid[_account])).div(1e18)).add(rewards[_account]);
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
@@ -170,7 +170,7 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
      */
     function _addReward(uint256 _reward) internal {
         if (totalSupply() > 0) {
-            rewardPerTokenStored = rewardPerTokenStored.add(_reward.div(totalSupply()));
+            rewardPerTokenStored = rewardPerTokenStored.add(_reward.mul(1e18).div(totalSupply()));
         }
 
         totalAvailableRewards = totalAvailableRewards.add(_reward);
