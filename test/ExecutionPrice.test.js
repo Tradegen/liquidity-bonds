@@ -185,7 +185,7 @@ describe("ExecutionPrice", () => {
         let fee = await executionPrice.tradingFee();
         expect(fee).to.equal(100);
     });
-  });*/
+  });
 
   describe("#updateMinimumOrderSize", () => {
     it("not owner", async () => {
@@ -259,6 +259,51 @@ describe("ExecutionPrice", () => {
 
         let size = await executionPrice.minimumOrderSize();
         expect(size).to.equal(parseEther("10"));
+    });
+  });*/
+
+  describe("#updateContractOwner", () => {
+    beforeEach(async () => {
+        let tx = await executionPrice.setOwner(deployer.address)
+        await tx.wait();
+    });
+
+    it("not PriceManager", async () => {
+        let tx = executionPrice.connect(otherUser).updateContractOwner(pairDataAddress);
+        await expect(tx).to.be.reverted;
+
+        let owner = await executionPrice.owner();
+        expect(owner).to.equal(deployer.address);
+    });
+
+    it("not initialized", async () => {
+        let tx = executionPrice.updateContractOwner(pairDataAddress);
+        await expect(tx).to.be.reverted;
+
+        let owner = await executionPrice.owner();
+        expect(owner).to.equal(deployer.address);
+    });
+
+    it("owner is the same", async () => {
+        let tx = await executionPrice.setIsInitialized(true);
+        await tx.wait();
+
+        let tx2 = executionPrice.updateContractOwner(deployer.address);
+        await expect(tx2).to.be.reverted;
+
+        let owner = await executionPrice.owner();
+        expect(owner).to.equal(deployer.address);
+    });
+
+    it("meets requirements", async () => {
+        let tx = await executionPrice.setIsInitialized(true);
+        await tx.wait();
+
+        let tx2 = await executionPrice.updateContractOwner(pairDataAddress);
+        await tx2.wait();
+
+        let owner = await executionPrice.owner();
+        expect(owner).to.equal(pairDataAddress);
     });
   });
 });
