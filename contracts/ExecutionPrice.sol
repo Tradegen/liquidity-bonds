@@ -41,8 +41,8 @@ contract ExecutionPrice is IExecutionPrice {
     uint256 public tradingFee = 50;
     uint256 public minimumOrderSize = 1e16;
 
-    uint256 public startIndex;
-    uint256 public endIndex;
+    uint256 public startIndex = 1;
+    uint256 public endIndex = 1;
     bool public isBuyQueue;
     uint256 public numberOfTokensAvailable;
     mapping(uint256 => Order) public orderBook;

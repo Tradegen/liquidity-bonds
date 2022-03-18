@@ -260,7 +260,7 @@ describe("ExecutionPrice", () => {
         let size = await executionPrice.minimumOrderSize();
         expect(size).to.equal(parseEther("10"));
     });
-  });*/
+  });
 
   describe("#updateContractOwner", () => {
     beforeEach(async () => {
@@ -304,6 +304,126 @@ describe("ExecutionPrice", () => {
 
         let owner = await executionPrice.owner();
         expect(owner).to.equal(pairDataAddress);
+    });
+  });*/
+
+  describe("#append", () => {/*
+    it("no existing orders", async () => {
+        let tx = await executionPrice.append(deployer.address, parseEther("1"));
+        await tx.wait();
+
+        let numberOfTokensAvailable = await executionPrice.numberOfTokensAvailable();
+        expect(numberOfTokensAvailable).to.equal(parseEther("1"));
+
+        let endIndex = await executionPrice.endIndex();
+        expect(endIndex).to.equal(2);
+
+        let orderIndex = await executionPrice.orderIndex(deployer.address);
+        expect(orderIndex).to.equal(1);
+
+        let order1 = await executionPrice.orderBook(0);
+        expect(order1.quantity).to.equal(0);
+        expect(order1.amountFilled).to.equal(0);
+
+        let order2 = await executionPrice.orderBook(1);
+        expect(order2.user).to.equal(deployer.address);
+        expect(order2.quantity).to.equal(parseEther("1"));
+        expect(order2.amountFilled).to.equal(0);
+    });
+
+    it("multiple orders from same user", async () => {
+        let tx = await executionPrice.append(deployer.address, parseEther("1"));
+        await tx.wait();
+
+        let tx2 = await executionPrice.append(deployer.address, parseEther("2"));
+        await tx2.wait();
+
+        let tx3 = await executionPrice.append(deployer.address, parseEther("3"));
+        await tx3.wait();
+
+        let numberOfTokensAvailable = await executionPrice.numberOfTokensAvailable();
+        expect(numberOfTokensAvailable).to.equal(parseEther("6"));
+
+        let startIndex = await executionPrice.startIndex();
+        expect(startIndex).to.equal(1);
+
+        let endIndex = await executionPrice.endIndex();
+        expect(endIndex).to.equal(4);
+
+        let orderIndex = await executionPrice.orderIndex(deployer.address);
+        expect(orderIndex).to.equal(3);
+
+        let order1 = await executionPrice.orderBook(0);
+        expect(order1.quantity).to.equal(0);
+        expect(order1.amountFilled).to.equal(0);
+
+        let order2 = await executionPrice.orderBook(1);
+        expect(order2.user).to.equal(deployer.address);
+        expect(order2.quantity).to.equal(parseEther("1"));
+        expect(order2.amountFilled).to.equal(0);
+
+        let order3 = await executionPrice.orderBook(2);
+        expect(order3.user).to.equal(deployer.address);
+        expect(order3.quantity).to.equal(parseEther("2"));
+        expect(order3.amountFilled).to.equal(0);
+
+        let order4 = await executionPrice.orderBook(3);
+        expect(order4.user).to.equal(deployer.address);
+        expect(order4.quantity).to.equal(parseEther("3"));
+        expect(order4.amountFilled).to.equal(0);
+    });*/
+
+    it("multiple orders from different users", async () => {
+        let tx = await executionPrice.append(deployer.address, parseEther("1"));
+        await tx.wait();
+
+        let tx2 = await executionPrice.append(deployer.address, parseEther("2"));
+        await tx2.wait();
+
+        let tx3 = await executionPrice.append(otherUser.address, parseEther("3"));
+        await tx3.wait();
+
+        let tx4 = await executionPrice.append(deployer.address, parseEther("4"));
+        await tx4.wait();
+
+        let numberOfTokensAvailable = await executionPrice.numberOfTokensAvailable();
+        expect(numberOfTokensAvailable).to.equal(parseEther("10"));
+
+        let startIndex = await executionPrice.startIndex();
+        expect(startIndex).to.equal(1);
+
+        let endIndex = await executionPrice.endIndex();
+        expect(endIndex).to.equal(5);
+
+        let orderIndexDeployer = await executionPrice.orderIndex(deployer.address);
+        expect(orderIndexDeployer).to.equal(4);
+
+        let orderIndexOther = await executionPrice.orderIndex(otherUser.address);
+        expect(orderIndexOther).to.equal(3);
+
+        let order1 = await executionPrice.orderBook(0);
+        expect(order1.quantity).to.equal(0);
+        expect(order1.amountFilled).to.equal(0);
+
+        let order2 = await executionPrice.orderBook(1);
+        expect(order2.user).to.equal(deployer.address);
+        expect(order2.quantity).to.equal(parseEther("1"));
+        expect(order2.amountFilled).to.equal(0);
+
+        let order3 = await executionPrice.orderBook(2);
+        expect(order3.user).to.equal(deployer.address);
+        expect(order3.quantity).to.equal(parseEther("2"));
+        expect(order3.amountFilled).to.equal(0);
+
+        let order4 = await executionPrice.orderBook(3);
+        expect(order4.user).to.equal(otherUser.address);
+        expect(order4.quantity).to.equal(parseEther("3"));
+        expect(order4.amountFilled).to.equal(0);
+
+        let order5 = await executionPrice.orderBook(4);
+        expect(order5.user).to.equal(deployer.address);
+        expect(order5.quantity).to.equal(parseEther("4"));
+        expect(order5.amountFilled).to.equal(0);
     });
   });
 });

@@ -5,6 +5,8 @@ pragma solidity ^0.8.3;
 import "../ExecutionPrice.sol";
 
 contract TestExecutionPrice is ExecutionPrice {
+    uint256 public totalFilledAmount;
+
     constructor(address _TGEN, address _bondToken, address _marketplace, address _xTGEN)
         ExecutionPrice(_TGEN, _bondToken, _marketplace, _xTGEN)
     {
@@ -48,5 +50,13 @@ contract TestExecutionPrice is ExecutionPrice {
 
     function setPrice(uint256 _price) external {
         price = _price;
+    }
+
+    function append(address _user, uint256 _amount) external {
+        _append(_user, _amount);
+    }
+
+    function executeOrder(uint256 _amount) external {
+        totalFilledAmount = _executeOrder(_amount);
     }
 }
