@@ -69,7 +69,7 @@ describe("ExecutionPrice", () => {
     ReleaseScheduleFactory = await ethers.getContractFactory('TestReleaseSchedule');
     ReleaseEscrowFactory = await ethers.getContractFactory('ReleaseEscrow');
     LiquidityBondFactory = await ethers.getContractFactory('TestLiquidityBond');
-    ExecutionPriceFactory = await ethers.getContractFactory('ExecutionPrice');
+    ExecutionPriceFactory = await ethers.getContractFactory('TestExecutionPrice');
 
     tradegenToken = await TestTokenFactory.deploy("Test TGEN", "TGEN");
     await tradegenToken.deployed();
@@ -137,7 +137,7 @@ describe("ExecutionPrice", () => {
     await executionPrice.deployed();
     executionPriceAddress = executionPrice.address;
   });
-  
+  /*
   describe("#updateTradingFee", () => {
     it("not owner", async () => {
         let tx = executionPrice.connect(otherUser).updateTradingFee(100)
@@ -145,6 +145,88 @@ describe("ExecutionPrice", () => {
 
         let fee = await executionPrice.tradingFee();
         expect(fee).to.equal(50);
+    });
+
+    it("not initialized", async () => {
+        let tx = executionPrice.updateTradingFee(100)
+        await expect(tx).to.be.reverted;
+
+        let fee = await executionPrice.tradingFee();
+        expect(fee).to.equal(50);
+    });
+
+    it("> max trading fee", async () => {
+        let tx = await executionPrice.setIsInitialized(true);
+        await tx.wait();
+
+        let tx2 = await executionPrice.setOwner(deployer.address)
+        await tx2.wait();
+
+        let tx3 = executionPrice.updateTradingFee(2000)
+        await expect(tx3).to.be.reverted;
+
+        let fee = await executionPrice.tradingFee();
+        expect(fee).to.equal(50);
+    });
+
+    it("meets requirements", async () => {
+        let tx = await executionPrice.setIsInitialized(true);
+        await tx.wait();
+
+        let tx2 = await executionPrice.setOwner(deployer.address)
+        await tx2.wait();
+
+        let tx3 = await executionPrice.updateTradingFee(100)
+        await tx3.wait();
+
+        let fee = await executionPrice.tradingFee();
+        expect(fee).to.equal(100);
+    });
+  });*/
+
+  describe("#updateTradingFee", () => {
+    it("not owner", async () => {
+        let tx = executionPrice.connect(otherUser).updateTradingFee(100)
+        await expect(tx).to.be.reverted;
+
+        let fee = await executionPrice.tradingFee();
+        expect(fee).to.equal(50);
+    });
+
+    it("not initialized", async () => {
+        let tx = executionPrice.updateTradingFee(100)
+        await expect(tx).to.be.reverted;
+
+        let fee = await executionPrice.tradingFee();
+        expect(fee).to.equal(50);
+    });
+
+    it("> max trading fee", async () => {
+        let tx = await executionPrice.setIsInitialized(true);
+        await tx.wait();
+
+        let tx2 = await executionPrice.setOwner(deployer.address)
+        await tx2.wait();
+
+        let tx3 = executionPrice.updateTradingFee(2000)
+        await expect(tx3).to.be.reverted;
+
+        let fee = await executionPrice.tradingFee();
+        expect(fee).to.equal(50);
+    });
+
+    it("meets requirements", async () => {
+        let tx = await executionPrice.setIsInitialized(true);
+        await tx.wait();
+
+        let tx2 = await executionPrice.setOwner(deployer.address)
+        await tx2.wait();
+
+        let tx3 = await executionPrice.updateTradingFee(100)
+        await tx3.wait();
+
+        let fee = await executionPrice.tradingFee();
+        expect(fee).to.equal(100);
     });
   });
 });

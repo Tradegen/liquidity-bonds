@@ -48,7 +48,7 @@ contract ExecutionPrice is IExecutionPrice {
     mapping(uint256 => Order) public orderBook;
     mapping(address => uint256) public orderIndex;
 
-    bool private initialized;
+    bool internal initialized;
 
     constructor(address _TGEN, address _bondToken, address _marketplace, address _xTGEN) {
         require(_TGEN != address(0), "ExecutionPrice: invalid address for TGEN.");
@@ -303,7 +303,7 @@ contract ExecutionPrice is IExecutionPrice {
      * @notice This function is meant to be called by the contract owner.
      * @param _newFee the new trading fee.
      */
-    function updateTradingFee(uint256 _newFee) external override onlyOwner {
+    function updateTradingFee(uint256 _newFee) external override onlyOwner isInitialized {
         require(_newFee >= 0, "ExecutionPrice: trading fee must be positive.");
         require(_newFee <= MAX_TRADING_FEE, "ExecutionPrice: trading fee is too high.");
 
@@ -317,7 +317,7 @@ contract ExecutionPrice is IExecutionPrice {
      * @notice This function is meant to be called by the contract owner.
      * @param _newSize the new minimum order size.
      */
-    function updateMinimumOrderSize(uint256 _newSize) external override onlyOwner {
+    function updateMinimumOrderSize(uint256 _newSize) external override onlyOwner isInitialized {
         require(_newSize.mul(price).div(1e18) >= MIN_MINIMUM_ORDER_VALUE, "ExecutionPrice: minimum order size is too low.");
         require(_newSize.mul(price).div(1e18) <= MAX_MINIMUM_ORDER_VALUE, "ExecutionPrice: minimum order size is too high.");
 
@@ -332,7 +332,7 @@ contract ExecutionPrice is IExecutionPrice {
      *          ExecutionPrice NFT is purchased by another user.
      * @param _newOwner the new contract owner.
      */
-    function updateContractOwner(address _newOwner) external override onlyPriceManager {
+    function updateContractOwner(address _newOwner) external override onlyPriceManager isInitialized {
         require(_newOwner != address(0), "ExecutionPrice: invalid address for new owner.");
         require(_newOwner != owner, "ExecutionPrice: owner is the same.");
 

@@ -37,4 +37,12 @@ contract TestExecutionPrice is ExecutionPrice {
             amountFilled: _amountFilled
         });
     }
+
+    function setIsInitialized(bool _isInitialized) external {
+        initialized = _isInitialized;
+    }
+
+    function setOwner(address _owner) external {
+        owner = _owner;
+    }
 }
