@@ -824,7 +824,7 @@ describe("LiquidityBond", () => {
 
       let earnedOther = await liquidityBond.earned(otherUser.address);
       expect(earnedOther).to.equal("63975376475375000");
-    });*/
+    });
 
     it("other investors, reward available", async () => {
       let currentTime = await pairData.getCurrentTime();
@@ -899,6 +899,191 @@ describe("LiquidityBond", () => {
       let newBalanceOther = await tradegenToken.balanceOf(otherUser.address);
       let expectedNewBalanceOther = BigInt(initialBalanceOther) + BigInt("32051282051280000");
       expect(newBalanceOther.toString()).to.equal(expectedNewBalanceOther.toString());
+    });*/
+
+    it("no other investors, reward available, purchase again without getting reward", async () => {
+      let currentTime = await pairData.getCurrentTime();
+      let initialBalanceStaking = await tradegenToken.balanceOf(pairDataAddress);
+
+      releaseSchedule = await ReleaseScheduleFactory.deploy(parseEther("1000"), currentTime - 1000);
+      await releaseSchedule.deployed();
+      releaseScheduleAddress = releaseSchedule.address;
+
+      releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, tradegenTokenAddress, releaseScheduleAddress);
+      await releaseEscrow.deployed();
+      releaseEscrowAddress = releaseEscrow.address;
+
+      let tx = await tradegenToken.transfer(releaseEscrowAddress, parseEther("1000"));
+      await tx.wait();
+
+      let tx2 = await liquidityBond.setReleaseEscrow(releaseEscrowAddress);
+      await tx2.wait();
+
+      let initialBalanceDeployer = await tradegenToken.balanceOf(deployer.address);
+
+      let tx3 = await liquidityBond.testMint(deployer.address, parseEther("1000"));
+      await tx3.wait();
+
+      let tx4 = await mockCELO.approve(liquidityBondAddress, parseEther("1000"));
+      await tx4.wait();
+
+      let tx5 = await liquidityBond.purchase(parseEther("1000"));
+      await tx5.wait();
+
+      let newBalanceStaking = await tradegenToken.balanceOf(pairDataAddress);
+      let expectedNewBalanceStaking = BigInt(initialBalanceStaking) + BigInt("110221332443554665776"); // Excess TGEN when adding liquidity
+      expect(newBalanceStaking.toString()).to.equal(expectedNewBalanceStaking.toString());
+
+      let newBalanceDeployer = await tradegenToken.balanceOf(deployer.address);
+      let expectedNewBalanceDeployer = BigInt(initialBalanceDeployer) + BigInt("64038970288969000");
+      expect(newBalanceDeployer.toString()).to.equal(expectedNewBalanceDeployer.toString());
+
+      let totalAvailableRewards = await liquidityBond.totalAvailableRewards();
+      expect(totalAvailableRewards).to.equal("64038970288969691");
+
+      let rewardPerTokenStored = await liquidityBond.rewardPerTokenStored();
+      expect(rewardPerTokenStored).to.equal("64038970288969");
+
+      let rewardPerTokenPaid = await liquidityBond.userRewardPerTokenPaid(deployer.address);
+      expect(rewardPerTokenPaid).to.equal("64038970288969");
+
+      let rewardsDeployer = await liquidityBond.rewards(deployer.address);
+      expect(rewardsDeployer).to.equal(0);
+
+      let rewardsOther = await liquidityBond.rewards(otherUser.address);
+      expect(rewardsOther).to.equal(0);
+
+      let earnedDeployer = await liquidityBond.earned(deployer.address);
+      expect(earnedDeployer).to.equal(0);
     });
   });
+  /*
+  describe("#beforeTokenTransfer", () => {
+    it("recipient has no tokens", async () => {
+      let currentTime = await pairData.getCurrentTime();
+      let initialBalanceStaking = await tradegenToken.balanceOf(pairDataAddress);
+      let initialBalanceOther = await tradegenToken.balanceOf(otherUser.address);
+
+      releaseSchedule = await ReleaseScheduleFactory.deploy(parseEther("1000"), currentTime - 1000);
+      await releaseSchedule.deployed();
+      releaseScheduleAddress = releaseSchedule.address;
+
+      releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, tradegenTokenAddress, releaseScheduleAddress);
+      await releaseEscrow.deployed();
+      releaseEscrowAddress = releaseEscrow.address;
+
+      let tx = await tradegenToken.transfer(releaseEscrowAddress, parseEther("1000"));
+      await tx.wait();
+
+      let tx2 = await liquidityBond.setReleaseEscrow(releaseEscrowAddress);
+      await tx2.wait();
+
+      let initialBalanceDeployer = await tradegenToken.balanceOf(deployer.address);
+
+      let tx3 = await liquidityBond.testMint(deployer.address, parseEther("1000"));
+      await tx3.wait();
+
+      let tx4 = await liquidityBond.transfer(otherUser.address, parseEther("500"));
+      await tx4.wait();
+
+      let newBalanceStaking = await tradegenToken.balanceOf(pairDataAddress);
+      expect(newBalanceStaking).to.equal(initialBalanceStaking);
+
+      let newBalanceDeployer = await tradegenToken.balanceOf(deployer.address);
+      let expectedNewBalanceDeployer = BigInt(initialBalanceDeployer) + BigInt("63975376475375000");
+      expect(newBalanceDeployer.toString()).to.equal(expectedNewBalanceDeployer.toString());
+
+      let newBalanceOther = await tradegenToken.balanceOf(otherUser.address);
+      expect(newBalanceOther).to.equal(initialBalanceOther);
+
+      let rewardPerTokenPaidDeployer = await liquidityBond.userRewardPerTokenPaid(deployer.address);
+      expect(rewardPerTokenPaidDeployer).to.equal("63975376475375");
+
+      let rewardPerTokenPaidOther = await liquidityBond.userRewardPerTokenPaid(otherUser.address);
+      expect(rewardPerTokenPaidOther).to.equal("63975376475375");
+
+      let rewardsDeployer = await liquidityBond.rewards(deployer.address);
+      expect(rewardsDeployer).to.equal(0);
+
+      let rewardsOther = await liquidityBond.rewards(otherUser.address);
+      expect(rewardsOther).to.equal(0);
+
+      let earnedDeployer = await liquidityBond.earned(deployer.address);
+      expect(earnedDeployer).to.equal(0);
+
+      let earnedOther = await liquidityBond.earned(otherUser.address);
+      expect(earnedOther).to.equal(0);
+
+      let bondTokenBalanceDeployer = await liquidityBond.balanceOf(deployer.address);
+      expect(bondTokenBalanceDeployer).to.equal(parseEther("500"));
+
+      let bondTokenBalanceOther = await liquidityBond.balanceOf(otherUser.address);
+      expect(bondTokenBalanceOther).to.equal(parseEther("500"));
+    });
+
+    it("recipient has tokens", async () => {
+      let currentTime = await pairData.getCurrentTime();
+      let initialBalanceStaking = await tradegenToken.balanceOf(pairDataAddress);
+      let initialBalanceOther = await tradegenToken.balanceOf(otherUser.address);
+
+      releaseSchedule = await ReleaseScheduleFactory.deploy(parseEther("1000"), currentTime - 1000);
+      await releaseSchedule.deployed();
+      releaseScheduleAddress = releaseSchedule.address;
+
+      releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, tradegenTokenAddress, releaseScheduleAddress);
+      await releaseEscrow.deployed();
+      releaseEscrowAddress = releaseEscrow.address;
+
+      let tx = await tradegenToken.transfer(releaseEscrowAddress, parseEther("1000"));
+      await tx.wait();
+
+      let tx2 = await liquidityBond.setReleaseEscrow(releaseEscrowAddress);
+      await tx2.wait();
+
+      let initialBalanceDeployer = await tradegenToken.balanceOf(deployer.address);
+
+      let tx3 = await liquidityBond.testMint(deployer.address, parseEther("1000"));
+      await tx3.wait();
+
+      let tx4 = await liquidityBond.testMint(otherUser.address, parseEther("1000"));
+      await tx4.wait();
+
+      let tx5 = await liquidityBond.transfer(otherUser.address, parseEther("500"));
+      await tx5.wait();
+
+      let newBalanceStaking = await tradegenToken.balanceOf(pairDataAddress);
+      expect(newBalanceStaking).to.equal(initialBalanceStaking);
+
+      let newBalanceDeployer = await tradegenToken.balanceOf(deployer.address);
+      let expectedNewBalanceDeployer = BigInt(initialBalanceDeployer) + BigInt("32019485144484000");
+      expect(newBalanceDeployer.toString()).to.equal(expectedNewBalanceDeployer.toString());
+
+      let newBalanceOther = await tradegenToken.balanceOf(otherUser.address);
+      expect(newBalanceOther).to.equal(initialBalanceOther);
+
+      let rewardPerTokenPaidDeployer = await liquidityBond.userRewardPerTokenPaid(deployer.address);
+      expect(rewardPerTokenPaidDeployer).to.equal("32019485144484");
+
+      let rewardPerTokenPaidOther = await liquidityBond.userRewardPerTokenPaid(otherUser.address);
+      expect(rewardPerTokenPaidOther).to.equal("32019485144484");
+
+      let rewardsDeployer = await liquidityBond.rewards(deployer.address);
+      expect(rewardsDeployer).to.equal(0);
+
+      let rewardsOther = await liquidityBond.rewards(otherUser.address);
+      expect(rewardsOther).to.equal("32019485144484000");
+
+      let earnedDeployer = await liquidityBond.earned(deployer.address);
+      expect(earnedDeployer).to.equal(0);
+
+      let earnedOther = await liquidityBond.earned(otherUser.address);
+      expect(earnedOther).to.equal("32019485144484000");
+
+      let bondTokenBalanceDeployer = await liquidityBond.balanceOf(deployer.address);
+      expect(bondTokenBalanceDeployer).to.equal(parseEther("500"));
+
+      let bondTokenBalanceOther = await liquidityBond.balanceOf(otherUser.address);
+      expect(bondTokenBalanceOther).to.equal(parseEther("1500"));
+    });
+  });*/
 });

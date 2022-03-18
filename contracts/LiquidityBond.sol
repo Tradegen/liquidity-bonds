@@ -96,6 +96,8 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
         require(_amount > 0, "LiquidityBond: Amount must be positive.");
         require(_amount <= MAX_PURCHASE_AMOUNT, "LiquidityBond: Amount must be less than max purchase amount.");
 
+        _getReward();
+
         // Use the deposited collateral to add liquidity for TGEN-CELO.
         collateralToken.safeTransferFrom(msg.sender, address(this), _amount);
         _addLiquidity(_amount);
@@ -123,14 +125,7 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
      * @dev Claims available rewards for the user.
      */
     function getReward() public override nonReentrant releaseEscrowIsSet rewardsHaveStarted {
-        uint256 availableRewards = releaseEscrow.withdraw();
-        if (totalSupply() == 0) {
-            rewardsToken.safeTransfer(xTGEN, availableRewards);
-        }
-        else {
-            _addReward(availableRewards);
-            _getReward();
-        }
+        _getReward();
     }
 
     /**
@@ -147,14 +142,35 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
      *
      * To learn more about hooks, head to xref:ROOT:extending-contracts.adoc#using-hooks[Using Hooks].
      */
-    function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual override updateReward(from) updateReward(to) {}
+    function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual override {
+        if (from != address(0) && to != address(0)) {
+            _getReward();
+
+            rewards[to] = earned(to);
+            userRewardPerTokenPaid[to] = rewardPerTokenStored;
+        }
+    }
 
     /* ========== INTERNAL FUNCTIONS ========== */
 
     /**
+     * @dev Updates available rewards for the contracts and claims user's share of rewards.
+     */
+    function _getReward() internal {
+        uint256 availableRewards = releaseEscrow.withdraw();
+        if (totalSupply() == 0) {
+            rewardsToken.safeTransfer(xTGEN, availableRewards);
+        }
+        else {
+            _addReward(availableRewards);
+            _claimReward();
+        }
+    }
+
+    /**
      * @dev Claims available rewards for the user.
      */
-    function _getReward() internal updateReward(msg.sender) {
+    function _claimReward() internal updateReward(msg.sender) {
         uint256 reward = rewards[msg.sender];
 
         if (reward > 0) {
