@@ -12,6 +12,7 @@ import './interfaces/IExecutionPrice.sol';
 
 // Interfaces
 import './interfaces/IPriceManager.sol';
+import './interfaces/ILiquidityBond.sol';
 
 contract ExecutionPrice is IExecutionPrice {
     using SafeERC20 for IERC20;
@@ -249,13 +250,19 @@ contract ExecutionPrice is IExecutionPrice {
     /**
      * @dev Executes an order based on the queue type.
      * @notice If queue is a 'buy queue', this will be treated as a 'sell' order. 
-     * @notice Fee is paid in bondn tokens if queue is a 'sell queue'.
+     * @notice Fee is paid in bond tokens if queue is a 'sell queue'.
      * @param _amount number of bond tokens.
      * @return totalFilledAmount - number of tokens bought/sold.
      */
     function _executeOrder(uint256 _amount) internal returns (uint256 totalFilledAmount) {
         uint256 filledAmount;
 
+        // Claim bond token rewards accumulated while tokens were in escrow.
+        uint256 initialBalance = TGEN.balanceOf(address(this));
+        ILiquidityBond(address(bondToken)).getReward();
+        uint256 newBalance = TGEN.balanceOf(address(this));
+
+        {
         // Save gas by getting endIndex once, instead of after each loop iteration.
         uint256 start = startIndex;
         uint256 end = endIndex;
@@ -265,7 +272,7 @@ contract ExecutionPrice is IExecutionPrice {
         for (; start < end; start++) {
             filledAmount = (_amount.sub(totalFilledAmount) > orderBook[start].quantity.sub(orderBook[start].amountFilled)) ?
                             orderBook[start].quantity.sub(orderBook[start].amountFilled) :
-                            orderBook[start].quantity.sub(orderBook[start].amountFilled).sub(_amount.sub(totalFilledAmount));
+                            _amount.sub(totalFilledAmount);
             totalFilledAmount = totalFilledAmount.add(filledAmount);
             orderBook[start].amountFilled = orderBook[start].amountFilled.add(filledAmount);
 
@@ -276,12 +283,19 @@ contract ExecutionPrice is IExecutionPrice {
                 bondToken.transfer(orderBook[start].user, filledAmount.mul(10000 - tradingFee).div(10000));
             }
 
+            // Exit early when order is filled.
             if (totalFilledAmount == _amount) {
+                break;
+            }
+
+            // Avoid skipping last order if it was partially filled.
+            if (totalFilledAmount < _amount && filledAmount < orderBook[start].quantity) {
                 break;
             }
         }
 
         startIndex = start;
+        }
 
         // Send trading fee to contract owner.
         // If owner is the marketplace contract (NFT held in escrow while listed for sale), transfer TGEN to xTGEN contract
@@ -294,6 +308,9 @@ contract ExecutionPrice is IExecutionPrice {
         }
 
         numberOfTokensAvailable = numberOfTokensAvailable.sub(totalFilledAmount);
+
+        // Transfer accumulated rewards to xTGEN contract.
+        TGEN.safeTransfer(xTGEN, newBalance.sub(initialBalance));
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */

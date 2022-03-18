@@ -450,7 +450,8 @@ describe("LiquidityBond", () => {
     });
   });
   
-  describe("#addLiquidity", () => { 
+  describe("#addLiquidity", () => {
+    
     it("low slippage", async () => {
       let tx = await mockCELO.transfer(liquidityBondAddress, parseEther("10"));
       await tx.wait();
@@ -472,11 +473,14 @@ describe("LiquidityBond", () => {
       let tx = await mockCELO.transfer(liquidityBondAddress, parseEther("200"));
       await tx.wait();
 
+      let initialBalanceTGEN = await tradegenToken.balanceOf(pairDataAddress);
+
       let tx2 = await liquidityBond.addLiquidity(parseEther("200"));
       await tx2.wait();
 
-      let balanceTGEN = await tradegenToken.balanceOf(pairDataAddress);
-      expect(balanceTGEN).to.equal("7993915696016268900"); // 79.9391 TGEN
+      let newBalanceTGEN = await tradegenToken.balanceOf(pairDataAddress);
+      let expectedBalanceTGEN = BigInt(initialBalanceTGEN) + BigInt("7993915696016268900"); // 79.9391 TGEN
+      expect(newBalanceTGEN.toString()).to.equal(expectedBalanceTGEN.toString()); 
 
       let pair = await ubeswapFactory.getPair(tradegenTokenAddress, mockCELOAddress);
 
@@ -489,11 +493,14 @@ describe("LiquidityBond", () => {
       let tx = await mockCELO.transfer(liquidityBondAddress, parseEther("3000"));
       await tx.wait();
 
+      let initialBalanceTGEN = await tradegenToken.balanceOf(pairDataAddress);
+
       let tx2 = await liquidityBond.addLiquidity(parseEther("3000"));
       await tx2.wait();
 
-      let balanceTGEN = await tradegenToken.balanceOf(pairDataAddress);
-      expect(balanceTGEN).to.equal("358845922660789420957"); // 358.8459 TGEN
+      let newBalanceTGEN = await tradegenToken.balanceOf(pairDataAddress);
+      let expectedBalanceTGEN = BigInt(initialBalanceTGEN) + BigInt("358845922660789420957"); // 358.8459 TGEN
+      expect(newBalanceTGEN.toString()).to.equal(expectedBalanceTGEN.toString()); 
 
       let pair = await ubeswapFactory.getPair(tradegenTokenAddress, mockCELOAddress);
 
@@ -502,7 +509,7 @@ describe("LiquidityBond", () => {
       expect(reserves[1]).to.equal("641154077339210579043"); // 641.154 TGEN 
     });
   });
-
+  
   describe("#purchase", () => { 
     it("release escrow not set", async () => {
       let tx = liquidityBond.purchase(parseEther("1"));
@@ -523,11 +530,14 @@ describe("LiquidityBond", () => {
       await releaseEscrow.deployed();
       releaseEscrowAddress = releaseEscrow.address;
 
-      let tx = await liquidityBond.setReleaseEscrow(releaseEscrowAddress);
+      let tx = await tradegenToken.transfer(releaseEscrowAddress, parseEther("1000"));
       await tx.wait();
 
-      let tx2 = liquidityBond.purchase(parseEther("1"));
-      await expect(tx2).to.be.reverted;
+      let tx2 = await liquidityBond.setReleaseEscrow(releaseEscrowAddress);
+      await tx2.wait();
+
+      let tx3 = liquidityBond.purchase(parseEther("1"));
+      await expect(tx3).to.be.reverted;
 
       let totalSupply = await liquidityBond.totalSupply();
       expect(totalSupply).to.equal(0);
@@ -544,21 +554,24 @@ describe("LiquidityBond", () => {
       await releaseEscrow.deployed();
       releaseEscrowAddress = releaseEscrow.address;
 
-      let tx = await liquidityBond.setReleaseEscrow(releaseEscrowAddress);
+      let tx = await tradegenToken.transfer(releaseEscrowAddress, parseEther("1000"));
       await tx.wait();
 
-      let tx2 = await liquidityBond.setTotalStakedAmount(parseEther("1000"));
+      let tx2 = await liquidityBond.setReleaseEscrow(releaseEscrowAddress);
       await tx2.wait();
 
-      let tx3 = await liquidityBond.setStakedAmount(0, parseEther("1000"));
+      let tx3 = await liquidityBond.setTotalStakedAmount(parseEther("1000"));
       await tx3.wait();
 
-      let tx4 = await mockCELO.approve(liquidityBondAddress, parseEther("100"));
+      let tx4 = await liquidityBond.setStakedAmount(0, parseEther("1000"));
       await tx4.wait();
 
-      let tx5 = await liquidityBond.purchase(parseEther("100"));
-      let temp = await tx5.wait();
-      let event = temp.events[30].args;
+      let tx5 = await mockCELO.approve(liquidityBondAddress, parseEther("100"));
+      await tx5.wait();
+
+      let tx6 = await liquidityBond.purchase(parseEther("100"));
+      let temp = await tx6.wait();
+      let event = temp.events[temp.events.length - 1].args;
       expect(event.user).to.equal(deployer.address);
       expect(event.amountDeposited).to.equal(parseEther("100"));
       expect(event.numberOfBondTokensReceived).to.equal(parseEther("500"));
@@ -585,21 +598,24 @@ describe("LiquidityBond", () => {
       await releaseEscrow.deployed();
       releaseEscrowAddress = releaseEscrow.address;
 
-      let tx = await liquidityBond.setReleaseEscrow(releaseEscrowAddress);
+      let tx = await tradegenToken.transfer(releaseEscrowAddress, parseEther("1000"));
       await tx.wait();
 
-      let tx2 = await liquidityBond.setTotalStakedAmount(parseEther("1700"));
+      let tx2 = await liquidityBond.setReleaseEscrow(releaseEscrowAddress);
       await tx2.wait();
 
-      let tx3 = await liquidityBond.setStakedAmount(0, parseEther("1700"));
+      let tx3 = await liquidityBond.setTotalStakedAmount(parseEther("1700"));
       await tx3.wait();
 
-      let tx4 = await mockCELO.approve(liquidityBondAddress, parseEther("500"));
+      let tx4 = await liquidityBond.setStakedAmount(0, parseEther("1700"));
       await tx4.wait();
 
-      let tx5 = await liquidityBond.purchase(parseEther("500"));
-      let temp = await tx5.wait();
-      let event = temp.events[30].args;
+      let tx5 = await mockCELO.approve(liquidityBondAddress, parseEther("500"));
+      await tx5.wait();
+
+      let tx6 = await liquidityBond.purchase(parseEther("500"));
+      let temp = await tx6.wait();
+      let event = temp.events[temp.events.length - 1].args;
       expect(event.user).to.equal(deployer.address);
       expect(event.amountDeposited).to.equal(parseEther("500"));
       expect(event.numberOfBondTokensReceived).to.equal(parseEther("2500"));
@@ -626,21 +642,24 @@ describe("LiquidityBond", () => {
       await releaseEscrow.deployed();
       releaseEscrowAddress = releaseEscrow.address;
 
-      let tx = await liquidityBond.setReleaseEscrow(releaseEscrowAddress);
+      let tx = await tradegenToken.transfer(releaseEscrowAddress, parseEther("1000"));
       await tx.wait();
 
-      let tx2 = await liquidityBond.setTotalStakedAmount(parseEther("0"));
+      let tx2 = await liquidityBond.setReleaseEscrow(releaseEscrowAddress);
       await tx2.wait();
 
-      let tx3 = await liquidityBond.setStakedAmount(0, parseEther("0"));
+      let tx3 = await liquidityBond.setTotalStakedAmount(parseEther("0"));
       await tx3.wait();
 
-      let tx4 = await mockCELO.approve(liquidityBondAddress, parseEther("100"));
+      let tx4 = await liquidityBond.setStakedAmount(0, parseEther("0"));
       await tx4.wait();
 
-      let tx5 = await liquidityBond.purchase(parseEther("100"));
-      let temp = await tx5.wait();
-      let event = temp.events[30].args;
+      let tx5 = await mockCELO.approve(liquidityBondAddress, parseEther("100"));
+      await tx5.wait();
+
+      let tx6 = await liquidityBond.purchase(parseEther("100"));
+      let temp = await tx6.wait();
+      let event = temp.events[temp.events.length - 1].args;
       expect(event.user).to.equal(deployer.address);
       expect(event.amountDeposited).to.equal(parseEther("100"));
       expect(event.numberOfBondTokensReceived).to.equal(parseEther("595"));
@@ -667,21 +686,24 @@ describe("LiquidityBond", () => {
       await releaseEscrow.deployed();
       releaseEscrowAddress = releaseEscrow.address;
 
-      let tx = await liquidityBond.setReleaseEscrow(releaseEscrowAddress);
+      let tx = await tradegenToken.transfer(releaseEscrowAddress, parseEther("1000"));
       await tx.wait();
 
-      let tx2 = await liquidityBond.setTotalStakedAmount(parseEther("900"));
+      let tx2 = await liquidityBond.setReleaseEscrow(releaseEscrowAddress);
       await tx2.wait();
 
-      let tx3 = await liquidityBond.setStakedAmount(0, parseEther("900"));
+      let tx3 = await liquidityBond.setTotalStakedAmount(parseEther("900"));
       await tx3.wait();
 
-      let tx4 = await mockCELO.approve(liquidityBondAddress, parseEther("1000"));
+      let tx4 = await liquidityBond.setStakedAmount(0, parseEther("900"));
       await tx4.wait();
 
-      let tx5 = await liquidityBond.purchase(parseEther("1000"));
-      let temp = await tx5.wait();
-      let event = temp.events[30].args;
+      let tx5 = await mockCELO.approve(liquidityBondAddress, parseEther("1000"));
+      await tx5.wait();
+
+      let tx6 = await liquidityBond.purchase(parseEther("1000"));
+      let temp = await tx6.wait();
+      let event = temp.events[temp.events.length - 1].args;
       expect(event.user).to.equal(deployer.address);
       expect(event.amountDeposited).to.equal(parseEther("1000"));
       expect(event.numberOfBondTokensReceived).to.equal(parseEther("5005"));
@@ -702,8 +724,8 @@ describe("LiquidityBond", () => {
       let totalStakedAmount = await liquidityBond.totalStakedAmount();
       expect(totalStakedAmount).to.equal(parseEther("1900"));
     });
-  });
-
+  });*/
+  /*
   describe("#getReward", () => {
     it("release escrow not set", async () => {
       let initialBalance = await tradegenToken.balanceOf(pairDataAddress);
