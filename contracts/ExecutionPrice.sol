@@ -76,11 +76,18 @@ contract ExecutionPrice is IExecutionPrice {
 
         TGEN.safeTransferFrom(msg.sender, address(this), _amount.mul(price).div(1e18));
 
-        // Add order to queue.
+        // Add order to queue or update existing order.
         if (isBuyQueue) {
             require(endIndex.sub(startIndex) <= maximumNumberOfInvestors, "ExecutionPrice: queue is full.");
 
-            _append(msg.sender, _amount);
+            // Update existing order.
+            if (orderIndex[msg.sender] >= startIndex) {
+                orderBook[orderIndex[msg.sender]].quantity = orderBook[orderIndex[msg.sender]].quantity.add(_amount);
+            }
+            // Add order to queue.
+            else {
+                _append(msg.sender, _amount);
+            }
 
             emit Buy(msg.sender, _amount, 0);
         }
@@ -130,7 +137,14 @@ contract ExecutionPrice is IExecutionPrice {
         else {
             require(endIndex.sub(startIndex) <= maximumNumberOfInvestors, "ExecutionPrice: queue is full.");
 
-            _append(msg.sender, _amount);
+            // Update existing order.
+            if (orderIndex[msg.sender] >= startIndex) {
+                orderBook[orderIndex[msg.sender]].quantity = orderBook[orderIndex[msg.sender]].quantity.add(_amount);
+            }
+            // Add order to queue.
+            else {
+                _append(msg.sender, _amount);
+            }
 
             emit Sell(msg.sender, _amount, 0);
         }
