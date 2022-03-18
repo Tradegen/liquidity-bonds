@@ -45,4 +45,8 @@ contract TestExecutionPrice is ExecutionPrice {
     function setOwner(address _owner) external {
         owner = _owner;
     }
+
+    function setPrice(uint256 _price) external {
+        price = _price;
+    }
 }

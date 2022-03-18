@@ -148,8 +148,11 @@ describe("ExecutionPrice", () => {
     });
 
     it("not initialized", async () => {
-        let tx = executionPrice.updateTradingFee(100)
-        await expect(tx).to.be.reverted;
+        let tx = await executionPrice.setOwner(deployer.address)
+        await tx.wait();
+
+        let tx2 = executionPrice.updateTradingFee(100)
+        await expect(tx2).to.be.reverted;
 
         let fee = await executionPrice.tradingFee();
         expect(fee).to.equal(50);
@@ -184,35 +187,61 @@ describe("ExecutionPrice", () => {
     });
   });*/
 
-  describe("#updateTradingFee", () => {
+  describe("#updateMinimumOrderSize", () => {
     it("not owner", async () => {
-        let tx = executionPrice.connect(otherUser).updateTradingFee(100)
-        await expect(tx).to.be.reverted;
+        let tx = await executionPrice.setPrice(parseEther("1"));
+        await tx.wait();
 
-        let fee = await executionPrice.tradingFee();
-        expect(fee).to.equal(50);
+        let tx2 = executionPrice.connect(otherUser).updateMinimumOrderSize(parseEther("2"));
+        await expect(tx2).to.be.reverted;
+
+        let size = await executionPrice.minimumOrderSize();
+        expect(size).to.equal(parseEther("0.01"));
     });
 
     it("not initialized", async () => {
-        let tx = executionPrice.updateTradingFee(100)
-        await expect(tx).to.be.reverted;
+        let tx = await executionPrice.setPrice(parseEther("1"));
+        await tx.wait();
 
-        let fee = await executionPrice.tradingFee();
-        expect(fee).to.equal(50);
+        let tx2 = executionPrice.updateMinimumOrderSize(parseEther("2"));
+        await expect(tx2).to.be.reverted;
+
+        let size = await executionPrice.minimumOrderSize();
+        expect(size).to.equal(parseEther("0.01"));
     });
 
-    it("> max trading fee", async () => {
+    it("< min order value", async () => {
         let tx = await executionPrice.setIsInitialized(true);
         await tx.wait();
 
         let tx2 = await executionPrice.setOwner(deployer.address)
         await tx2.wait();
 
-        let tx3 = executionPrice.updateTradingFee(2000)
-        await expect(tx3).to.be.reverted;
+        let tx3 = await executionPrice.setPrice(parseEther("1"));
+        await tx3.wait();
 
-        let fee = await executionPrice.tradingFee();
-        expect(fee).to.equal(50);
+        let tx4 = executionPrice.updateMinimumOrderSize(parseEther("0.05"));
+        await expect(tx4).to.be.reverted;
+
+        let size = await executionPrice.minimumOrderSize();
+        expect(size).to.equal(parseEther("0.01"));
+    });
+
+    it("> max order value", async () => {
+        let tx = await executionPrice.setIsInitialized(true);
+        await tx.wait();
+
+        let tx2 = await executionPrice.setOwner(deployer.address)
+        await tx2.wait();
+
+        let tx3 = await executionPrice.setPrice(parseEther("1"));
+        await tx3.wait();
+
+        let tx4 = executionPrice.updateMinimumOrderSize(parseEther("1500"));
+        await expect(tx4).to.be.reverted;
+
+        let size = await executionPrice.minimumOrderSize();
+        expect(size).to.equal(parseEther("0.01"));
     });
 
     it("meets requirements", async () => {
@@ -222,11 +251,14 @@ describe("ExecutionPrice", () => {
         let tx2 = await executionPrice.setOwner(deployer.address)
         await tx2.wait();
 
-        let tx3 = await executionPrice.updateTradingFee(100)
+        let tx3 = await executionPrice.setPrice(parseEther("1"));
         await tx3.wait();
 
-        let fee = await executionPrice.tradingFee();
-        expect(fee).to.equal(100);
+        let tx4 = await executionPrice.updateMinimumOrderSize(parseEther("10"));
+        await tx4.wait();
+
+        let size = await executionPrice.minimumOrderSize();
+        expect(size).to.equal(parseEther("10"));
     });
   });
 });
