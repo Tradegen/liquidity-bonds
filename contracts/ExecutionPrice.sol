@@ -36,7 +36,7 @@ contract ExecutionPrice is IExecutionPrice {
     address public immutable marketplace;
     address public immutable xTGEN;
     uint256 public price; // Number of TGEN per bond token
-    uint256 public maximumNumberOfInvestors;
+    uint256 public maximumNumberOfInvestors = 20;
 
     address public owner;
     uint256 public tradingFee = 50;
@@ -79,14 +79,14 @@ contract ExecutionPrice is IExecutionPrice {
 
         // Add order to queue or update existing order.
         if (isBuyQueue) {
-            require(endIndex.sub(startIndex) <= maximumNumberOfInvestors, "ExecutionPrice: queue is full.");
-
             // Update existing order.
             if (orderIndex[msg.sender] >= startIndex) {
                 orderBook[orderIndex[msg.sender]].quantity = orderBook[orderIndex[msg.sender]].quantity.add(_amount);
+                numberOfTokensAvailable = numberOfTokensAvailable.add(_amount);
             }
             // Add order to queue.
             else {
+                require(endIndex.sub(startIndex) <= maximumNumberOfInvestors, "ExecutionPrice: queue is full.");
                 _append(msg.sender, _amount);
             }
 
@@ -136,14 +136,14 @@ contract ExecutionPrice is IExecutionPrice {
         }
         // Add order to queue.
         else {
-            require(endIndex.sub(startIndex) <= maximumNumberOfInvestors, "ExecutionPrice: queue is full.");
-
             // Update existing order.
             if (orderIndex[msg.sender] >= startIndex) {
                 orderBook[orderIndex[msg.sender]].quantity = orderBook[orderIndex[msg.sender]].quantity.add(_amount);
+                numberOfTokensAvailable = numberOfTokensAvailable.add(_amount);
             }
             // Add order to queue.
             else {
+                require(endIndex.sub(startIndex) <= maximumNumberOfInvestors, "ExecutionPrice: queue is full.");
                 _append(msg.sender, _amount);
             }
 
@@ -233,7 +233,7 @@ contract ExecutionPrice is IExecutionPrice {
     /**
      * @dev Adds an order to the end of the queue.
      * @param _user address of the user placing this order.
-     * @param _amount number of bond tokens.
+     * @param _amount number of bond tokens (buy queue) or TGEN (sell queue).
      */
     function _append(address _user, uint256 _amount) internal {
         orderBook[endIndex] = Order({
@@ -252,7 +252,7 @@ contract ExecutionPrice is IExecutionPrice {
      * @notice If queue is a 'buy queue', this will be treated as a 'sell' order. 
      * @notice Fee is paid in bond tokens if queue is a 'sell queue'.
      * @param _amount number of bond tokens.
-     * @return totalFilledAmount - number of tokens bought/sold.
+     * @return totalFilledAmount - number of tokens bought/sold. Represents bond tokens when this is a 'buy queue'.
      */
     function _executeOrder(uint256 _amount) internal returns (uint256 totalFilledAmount) {
         uint256 filledAmount;
@@ -277,10 +277,10 @@ contract ExecutionPrice is IExecutionPrice {
             orderBook[start].amountFilled = orderBook[start].amountFilled.add(filledAmount);
 
             if (isBuyQueue) {
-                TGEN.transfer(orderBook[start].user, filledAmount.mul(price).mul(10000 - tradingFee).div(1e18).div(10000));
+                bondToken.transfer(orderBook[start].user, filledAmount.mul(price).mul(10000 - tradingFee).div(1e18).div(10000));
             }
             else {
-                bondToken.transfer(orderBook[start].user, filledAmount.mul(10000 - tradingFee).div(10000));
+                TGEN.transfer(orderBook[start].user, filledAmount.mul(10000 - tradingFee).div(10000));
             }
 
             // Exit early when order is filled.
@@ -301,10 +301,10 @@ contract ExecutionPrice is IExecutionPrice {
         // If owner is the marketplace contract (NFT held in escrow while listed for sale), transfer TGEN to xTGEN contract
         // and burn bond tokens.
         if (isBuyQueue) {
-            TGEN.transfer((owner == marketplace) ? xTGEN : owner, totalFilledAmount.mul(price).mul(tradingFee).div(1e18).div(10000));
+            bondToken.transfer((owner == marketplace) ? address(0) : owner, totalFilledAmount.mul(tradingFee).div(10000));
         }
         else {
-            bondToken.transfer((owner == marketplace) ? address(0) : owner, totalFilledAmount.mul(tradingFee).div(10000));
+            TGEN.transfer((owner == marketplace) ? xTGEN : owner, totalFilledAmount.mul(price).mul(tradingFee).div(1e18).div(10000));
         }
 
         numberOfTokensAvailable = numberOfTokensAvailable.sub(totalFilledAmount);
