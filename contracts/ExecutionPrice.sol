@@ -32,7 +32,7 @@ contract ExecutionPrice is IExecutionPrice {
 
     IERC20 public immutable TGEN;
     IERC20 public immutable bondToken;
-    address public immutable priceManager;
+    address public priceManager;
     address public immutable marketplace;
     address public immutable xTGEN;
     uint256 public price; // Number of TGEN per bond token

@@ -10,6 +10,7 @@ import "./openzeppelin-solidity/contracts/ERC1155/ERC1155.sol";
 // Internal references
 import "./ExecutionPrice.sol";
 import "./interfaces/IExecutionPrice.sol";
+import "./interfaces/IExecutionPriceFactory.sol";
 
 // Inheritance
 import "./interfaces/IPriceManager.sol";
@@ -32,7 +33,7 @@ contract PriceManager is IPriceManager, ERC1155 {
 
     /* ========== STATE VARIABLES ========== */
 
-    address public immutable factory;
+    IExecutionPriceFactory public factory;
 
     uint256 public numberOfMints;
     mapping(uint256 => ExecutionPriceInfo) public executionPrices;
@@ -43,7 +44,7 @@ contract PriceManager is IPriceManager, ERC1155 {
     constructor(address _factory) ERC1155() {
         require(_factory != address(0), "PriceManager: invalid address for factory.");
 
-        factory = _factory;
+        factory = IExecutionPriceFactory(_factory);
     }
 
     /* ========== VIEWS ========== */
@@ -124,7 +125,8 @@ contract PriceManager is IPriceManager, ERC1155 {
         require(from == executionPrices[id].owner, "PriceManager: only the NFT owner can transfer.");
 
         // Update the owner of the ExecutionPrice contract.
-        IExecutionPrice(executionPrices[id].contractAddress).updateContractOwner(to);
+        factory.updateContractOwner(executionPrices[id].contractAddress, to);
+        executionPrices[id].owner = to;
 
         _safeTransferFrom(from, to, id, amount, data);
     }
@@ -165,7 +167,7 @@ contract PriceManager is IPriceManager, ERC1155 {
     }
 
     modifier onlyFactory() {
-        require(msg.sender == factory, "PriceManager: only the factory contract can call this function.");
+        require(msg.sender == address(factory), "PriceManager: only the factory contract can call this function.");
         _;
     }
 

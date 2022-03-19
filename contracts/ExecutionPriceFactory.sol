@@ -12,7 +12,10 @@ import "./ExecutionPrice.sol";
 import "./interfaces/IExecutionPrice.sol";
 import "./interfaces/IPriceManager.sol";
 
-contract ExecutionPriceFactory is Ownable {
+// Inheritance
+import "./interfaces/IExecutionPriceFactory.sol";
+
+contract ExecutionPriceFactory is IExecutionPriceFactory, Ownable {
     using SafeERC20 for IERC20;
 
     /* ========== CONSTANTS ========== */
@@ -88,7 +91,22 @@ contract ExecutionPriceFactory is Ownable {
         emit SetPriceManager(_priceManager);
     }
 
+    /**
+    * @dev Updates the owner of the given ExecutionPrice contract.
+    * @notice This function can only be called by the PriceManager contract.
+    * @param _executionPrice Address of the ExecutionPrice address.
+    * @param _newOwner Address of the new owner for the ExecutionPrice contract.
+    */
+    function updateContractOwner(address _executionPrice, address _newOwner) external override priceManagerIsSet onlyPriceManager {
+        IExecutionPrice(_executionPrice).updateContractOwner(_newOwner);
+    }
+
     /* ========== MODIFIERS ========== */
+
+    modifier onlyPriceManager() {
+        require(msg.sender == address(priceManager), "ExecutionPriceFactory: Only the PriceManager contract can call this function.");
+        _;
+    }
 
     modifier priceManagerIsNotSet() {
         require(address(priceManager) == address(0), "ExecutionPriceFactory: PriceManager contract is already set.");

@@ -59,4 +59,8 @@ contract TestExecutionPrice is ExecutionPrice {
     function executeOrder(uint256 _amount) external {
         totalFilledAmount = _executeOrder(_amount);
     }
+
+    function setPriceManager(address _priceManager) external {
+        priceManager = _priceManager;
+    }
 }
