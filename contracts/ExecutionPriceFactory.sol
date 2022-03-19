@@ -60,17 +60,14 @@ contract ExecutionPriceFactory is IExecutionPriceFactory, Ownable {
 
         uint256 price = priceManager.calculatePrice(_index);
 
+        // Bond tokens stay locked in this contract, effectively burning them.
         IERC20(bondToken).safeTransferFrom(msg.sender, address(this), MINT_COST);
-
-        // Burn received bond tokens.
-        IERC20(bondToken).safeTransfer(address(0), MINT_COST);
 
         //Create ExecutionPrice contract and mint an NFT.
         address executionPriceAddress = address(new ExecutionPrice(TGEN, bondToken, marketplace, xTGEN));
 
         priceManager.register(_index, msg.sender, executionPriceAddress, price);
 
-        // Update state variables before initializing contract so the transaction is not reverted when checking whether the ExecutionPrice is registered.
         ExecutionPrice(executionPriceAddress).initialize(price, _maximumNumberOfInvestors, _tradingFee, _minimumOrderSize, msg.sender);
 
         emit Purchased(msg.sender, _index);
