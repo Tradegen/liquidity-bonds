@@ -139,7 +139,7 @@ contract PriceManager is IPriceManager, ERC1155 {
      * @param _contractAddress Address of the ExecutionPrice associated with this NFT.
      * @param _price The price at which trades in the ExecutionPrice NFT will execute.
      */
-    function register(uint256 _index, address _owner, address _contractAddress, uint256 _price) external onlyFactory notMinted(_index) {
+    function register(uint256 _index, address _owner, address _contractAddress, uint256 _price) external override onlyFactory notMinted(_index) {
         _mint(_owner, _index, 1, "");
 
         numberOfMints = numberOfMints.add(1);

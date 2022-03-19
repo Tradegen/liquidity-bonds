@@ -17,7 +17,6 @@ describe("PriceManager", () => {
 
   let pairData;
   let pairDataAddress;
-  let pairDataAddress2;
   let PairDataFactory;
 
   let priceManager;
@@ -52,10 +51,8 @@ describe("PriceManager", () => {
     deployer = signers[0];
     otherUser = signers[1];
 
-    // Use mock CELO as bond token.
-    // Use pairDataAddress as mock marketplace.
-    // Use pairDataAddress as xTGEN.
-    priceManager = await PriceManagerFactory.deploy(tradegenTokenAddress, pairDataAddress, pairDataAddress, mockCELOAddress);
+    // Use pairDataAddress as factory
+    priceManager = await PriceManagerFactory.deploy(pairDataAddress);
     await priceManager.deployed();
     priceManagerAddress = priceManager.address;
   });
@@ -77,11 +74,70 @@ describe("PriceManager", () => {
     });
   });*/
 
-  describe("#calculatePrice", () => {
+  describe("#calculatePrice", () => {/*
     it("index > 1000", async () => {
         let price = await priceManager.calculatePrice(2000);
-        let expectedPrice = BigInt(parseEther("20959.1556")) * BigInt(2);
+        let expectedPrice = BigInt(parseEther("20959.1556")) * BigInt(209591556) / BigInt(10000);
         expect(price.toString()).to.equal(expectedPrice.toString());
+
+        price = await priceManager.calculatePrice(2200);
+        expectedPrice = BigInt(parseEther("20959.1556")) * BigInt(209591556) / BigInt(10000);
+        expectedPrice = BigInt(expectedPrice) * BigInt(27048) / BigInt(10000);
+        expectedPrice = BigInt(expectedPrice) * BigInt(27048) / BigInt(10000);
+        expect(price.toString()).to.equal(expectedPrice.toString());
+    });
+
+    it("index > 100", async () => {
+        let price = await priceManager.calculatePrice(200);
+        let expectedPrice = BigInt(parseEther("2.7048")) * BigInt(27048) / BigInt(10000);
+        expect(price.toString()).to.equal(expectedPrice.toString());
+
+        price = await priceManager.calculatePrice(230);
+        expectedPrice = BigInt(parseEther("2.7048")) * BigInt(27048) / BigInt(10000);
+        expectedPrice = BigInt(expectedPrice) * BigInt(11046) / BigInt(10000);
+        expectedPrice = BigInt(expectedPrice) * BigInt(11046) / BigInt(10000);
+        expectedPrice = BigInt(expectedPrice) * BigInt(11046) / BigInt(10000);
+        expect(price.toString()).to.equal(expectedPrice.toString());
+    });
+
+    it("index > 10", async () => {
+        let price = await priceManager.calculatePrice(20);
+        let expectedPrice = BigInt(parseEther("1.1046")) * BigInt(11046) / BigInt(10000);
+        expect(price.toString()).to.equal(expectedPrice.toString());
+
+        price = await priceManager.calculatePrice(23);
+        expectedPrice = BigInt(parseEther("1.1046")) * BigInt(11046) / BigInt(10000);
+        expectedPrice = BigInt(expectedPrice) * BigInt(101) / BigInt(100);
+        expectedPrice = BigInt(expectedPrice) * BigInt(101) / BigInt(100);
+        expectedPrice = BigInt(expectedPrice) * BigInt(101) / BigInt(100);
+        expect(price.toString()).to.equal(expectedPrice.toString());
+    });
+
+    it("index > 1", async () => {
+        let price = await priceManager.calculatePrice(4);
+        let expectedPrice = BigInt(parseEther("1.01")) * BigInt(101) / BigInt(100);
+        expectedPrice = BigInt(expectedPrice) * BigInt(101) / BigInt(100);
+        expectedPrice = BigInt(expectedPrice) * BigInt(101) / BigInt(100);
+        expect(price.toString()).to.equal(expectedPrice.toString());
+    });*/
+
+    it("index = 999", async () => {
+        let price = await priceManager.calculatePrice(999);
+        let expectedPrice = BigInt(parseEther("1")); 
+        for (let i = 0; i < 9; i++) {
+            expectedPrice = BigInt(expectedPrice) * BigInt(27048) / BigInt(10000);
+        }
+        for (let i = 0; i < 9; i++) {
+            expectedPrice = BigInt(expectedPrice) * BigInt(11046) / BigInt(10000);
+        }
+        for (let i = 0; i < 9; i++) {
+            expectedPrice = BigInt(expectedPrice) * BigInt(101) / BigInt(100);
+        }
+
+        expectedPrice = BigInt(expectedPrice) / BigInt(1e15);
+        let adjustedPrice = BigInt(price) / BigInt(1e15);
+
+        expect(adjustedPrice.toString()).to.equal(expectedPrice.toString());
     });
   });
 });
