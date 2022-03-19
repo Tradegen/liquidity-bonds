@@ -869,7 +869,7 @@ describe("ExecutionPrice", () => {
         expect(order.quantity).to.equal(parseEther("10"));
         expect(order.amountFilled).to.equal(parseEther("10"));
     });
-  });*/
+  });
 
   describe("#buy", () => {
     beforeEach(async () => {
@@ -898,7 +898,7 @@ describe("ExecutionPrice", () => {
         let tx5 = await executionPrice.setIsInitialized(true);
         await tx5.wait();
     });
-    /*
+    
     it("less than minimum order size", async () => {
         let tx = await tradegenToken.approve(executionPriceAddress, parseEther("0.001"));
         await tx.wait();
@@ -1191,7 +1191,7 @@ describe("ExecutionPrice", () => {
         expect(order.user).to.equal(otherUser.address);
         expect(order.quantity).to.equal(parseEther("10"));
         expect(order.amountFilled).to.equal(parseEther("2"));
-    });*/
+    });
 
     it("order not filled; sell queue", async () => {
         let tx = await executionPrice.setIsBuyQueue(false);
@@ -1237,6 +1237,424 @@ describe("ExecutionPrice", () => {
 
         let isBuyQueue = await executionPrice.isBuyQueue();
         expect(isBuyQueue).to.be.true;
+
+        let numberOfTokensAvailable = await executionPrice.numberOfTokensAvailable();
+        expect(numberOfTokensAvailable).to.equal(parseEther("2"));
+
+        let startIndex = await executionPrice.startIndex();
+        expect(startIndex).to.equal(2);
+
+        let endIndex = await executionPrice.endIndex();
+        expect(endIndex).to.equal(3);
+
+        let orderIndexUser = await executionPrice.orderIndex(deployer.address);
+        expect(orderIndexUser).to.equal(2);
+
+        let orderIndexOther = await executionPrice.orderIndex(otherUser.address);
+        expect(orderIndexOther).to.equal(1);
+
+        let order1 = await executionPrice.orderBook(1);
+        expect(order1.user).to.equal(otherUser.address);
+        expect(order1.quantity).to.equal(parseEther("10"));
+        expect(order1.amountFilled).to.equal(parseEther("10"));
+
+        let order2 = await executionPrice.orderBook(2);
+        expect(order2.user).to.equal(deployer.address);
+        expect(order2.quantity).to.equal(parseEther("2"));
+        expect(order2.amountFilled).to.equal(0);
+    });
+  });*/
+
+  describe("#sell", () => {
+    beforeEach(async () => {
+        let currentTime = await pairData.getCurrentTime();
+        
+        releaseSchedule = await ReleaseScheduleFactory.deploy(parseEther("1000"), currentTime - 1000);
+        await releaseSchedule.deployed();
+        releaseScheduleAddress = releaseSchedule.address;
+
+        releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, tradegenTokenAddress, releaseScheduleAddress);
+        await releaseEscrow.deployed();
+        releaseEscrowAddress = releaseEscrow.address;
+
+        let tx = await tradegenToken.transfer(releaseEscrowAddress, parseEther("1000"));
+        await tx.wait();
+
+        let tx2 = await liquidityBond.setReleaseEscrow(releaseEscrowAddress);
+        await tx2.wait();
+
+        let tx3 = await executionPrice.setOwner(releaseScheduleAddress);
+        await tx3.wait();
+
+        let tx4 = await executionPrice.setPrice(parseEther("1"));
+        await tx4.wait();
+
+        let tx5 = await executionPrice.setIsInitialized(true);
+        await tx5.wait();
+    });
+    
+    it("less than minimum order size", async () => {
+        let tx = await executionPrice.setIsBuyQueue(false);
+        await tx.wait();
+
+        let tx2 = await liquidityBond.testMint(deployer.address, parseEther("10"));
+        await tx2.wait();
+
+        let tx3 = await liquidityBond.approve(executionPriceAddress, parseEther("1"));
+        await tx3.wait();
+
+        let initialBalanceUser = await liquidityBond.balanceOf(deployer.address);
+
+        let tx4 = executionPrice.sell(parseEther("0.001"));
+        await expect(tx4).to.be.reverted;
+
+        let newBalanceUser = await liquidityBond.balanceOf(deployer.address);
+
+        expect(newBalanceUser).to.equal(initialBalanceUser);
+
+        let totalFilledAmount = await executionPrice.totalFilledAmount();
+        expect(totalFilledAmount).to.equal(0);
+
+        let numberOfTokensAvailable = await executionPrice.numberOfTokensAvailable();
+        expect(numberOfTokensAvailable).to.equal(0);
+
+        let startIndex = await executionPrice.startIndex();
+        expect(startIndex).to.equal(1);
+    });
+
+    it("queue is full; sell queue", async () => {
+        let tx = await executionPrice.setIsBuyQueue(false);
+        await tx.wait();
+
+        let tx2 = await liquidityBond.testMint(deployer.address, parseEther("10"));
+        await tx2.wait();
+
+        let tx3 = await liquidityBond.approve(executionPriceAddress, parseEther("1"));
+        await tx3.wait();
+
+        let initialBalanceUser = await liquidityBond.balanceOf(deployer.address);
+
+        let tx4 = await executionPrice.setEndIndex(22);
+        await tx4.wait();
+
+        let tx5 = executionPrice.sell(parseEther("1"));
+        await expect(tx5).to.be.reverted;
+
+        let newBalanceUser = await liquidityBond.balanceOf(deployer.address);
+
+        expect(newBalanceUser).to.equal(initialBalanceUser);
+
+        let totalFilledAmount = await executionPrice.totalFilledAmount();
+        expect(totalFilledAmount).to.equal(0);
+
+        let numberOfTokensAvailable = await executionPrice.numberOfTokensAvailable();
+        expect(numberOfTokensAvailable).to.equal(0);
+
+        let startIndex = await executionPrice.startIndex();
+        expect(startIndex).to.equal(1);
+    });
+
+    it("queue is empty; sell queue", async () => {
+        let tx = await executionPrice.setIsBuyQueue(false);
+        await tx.wait();
+
+        let tx2 = await liquidityBond.testMint(deployer.address, parseEther("10"));
+        await tx2.wait();
+
+        let tx3 = await liquidityBond.approve(executionPriceAddress, parseEther("1"));
+        await tx3.wait();
+
+        let initialBalanceUser = await liquidityBond.balanceOf(deployer.address);
+        let initialBalanceContract = await liquidityBond.balanceOf(executionPriceAddress);
+
+        let tx4 = await executionPrice.sell(parseEther("1"));
+        await tx4.wait();
+
+        let newBalanceUser = await liquidityBond.balanceOf(deployer.address);
+        let newBalanceContract = await liquidityBond.balanceOf(executionPriceAddress);
+        let expectedNewBalanceUser = BigInt(initialBalanceUser) - BigInt(1e18);
+        let expectedNewBalanceContract = BigInt(initialBalanceContract) + BigInt(1e18);
+        expect(newBalanceUser.toString()).to.equal(expectedNewBalanceUser.toString());
+        expect(newBalanceContract.toString()).to.equal(expectedNewBalanceContract.toString());
+
+        let totalFilledAmount = await executionPrice.totalFilledAmount();
+        expect(totalFilledAmount).to.equal(0);
+
+        let numberOfTokensAvailable = await executionPrice.numberOfTokensAvailable();
+        expect(numberOfTokensAvailable).to.equal(parseEther("1"));
+
+        let startIndex = await executionPrice.startIndex();
+        expect(startIndex).to.equal(1);
+
+        let endIndex = await executionPrice.endIndex();
+        expect(endIndex).to.equal(2);
+
+        let orderIndex = await executionPrice.orderIndex(deployer.address);
+        expect(orderIndex).to.equal(1);
+
+        let order = await executionPrice.orderBook(1);
+        expect(order.user).to.equal(deployer.address);
+        expect(order.quantity).to.equal(parseEther("1"));
+        expect(order.amountFilled).to.equal(0);
+    });
+
+    it("queue is empty, buy again; sell queue", async () => {
+        let tx = await executionPrice.setIsBuyQueue(false);
+        await tx.wait();
+
+        let tx2 = await liquidityBond.testMint(deployer.address, parseEther("10"));
+        await tx2.wait();
+
+        let tx3 = await liquidityBond.approve(executionPriceAddress, parseEther("2"));
+        await tx3.wait();
+
+        let initialBalanceUser = await liquidityBond.balanceOf(deployer.address);
+        let initialBalanceContract = await liquidityBond.balanceOf(executionPriceAddress);
+
+        let tx4 = await executionPrice.sell(parseEther("1"))
+        await tx4.wait();
+
+        let tx5 = await executionPrice.sell(parseEther("1"))
+        await tx5.wait();
+
+        let newBalanceUser = await liquidityBond.balanceOf(deployer.address);
+        let newBalanceContract = await liquidityBond.balanceOf(executionPriceAddress);
+        let expectedNewBalanceUser = BigInt(initialBalanceUser) - BigInt(2e18);
+        let expectedNewBalanceContract = BigInt(initialBalanceContract) + BigInt(2e18);
+        expect(newBalanceUser.toString()).to.equal(expectedNewBalanceUser.toString());
+        expect(newBalanceContract.toString()).to.equal(expectedNewBalanceContract.toString());
+
+        let totalFilledAmount = await executionPrice.totalFilledAmount();
+        expect(totalFilledAmount).to.equal(0);
+
+        let numberOfTokensAvailable = await executionPrice.numberOfTokensAvailable();
+        expect(numberOfTokensAvailable).to.equal(parseEther("2"));
+
+        let startIndex = await executionPrice.startIndex();
+        expect(startIndex).to.equal(1);
+
+        let endIndex = await executionPrice.endIndex();
+        expect(endIndex).to.equal(2);
+
+        let orderIndex = await executionPrice.orderIndex(deployer.address);
+        expect(orderIndex).to.equal(1);
+
+        let order = await executionPrice.orderBook(1);
+        expect(order.user).to.equal(deployer.address);
+        expect(order.quantity).to.equal(parseEther("2"));
+        expect(order.amountFilled).to.equal(0);
+    });
+
+    it("queue is empty, buy again with multiple users; sell queue", async () => {
+        let tx = await executionPrice.setIsBuyQueue(false);
+        await tx.wait();
+
+        let tx2 = await liquidityBond.testMint(deployer.address, parseEther("10"));
+        await tx2.wait();
+
+        let tx3 = await liquidityBond.transfer(otherUser.address, parseEther("5"));
+        await tx3.wait();
+
+        let tx4 = await liquidityBond.approve(executionPriceAddress, parseEther("2"));
+        await tx4.wait();
+
+        let initialBalanceUser = await liquidityBond.balanceOf(deployer.address);
+        let initialBalanceOther = await liquidityBond.balanceOf(otherUser.address);
+        let initialBalanceContract = await liquidityBond.balanceOf(executionPriceAddress);
+
+        let tx5 = await executionPrice.sell(parseEther("1"))
+        await tx5.wait();
+
+        let tx6 = await liquidityBond.connect(otherUser).approve(executionPriceAddress, parseEther("2"));
+        await tx6.wait();
+
+        let tx7 = await executionPrice.connect(otherUser).sell(parseEther("1"))
+        await tx7.wait();
+
+        let tx8 = await executionPrice.sell(parseEther("1"))
+        await tx8.wait();
+
+        let tx9 = await executionPrice.connect(otherUser).sell(parseEther("1"))
+        await tx9.wait();
+
+        let newBalanceUser = await liquidityBond.balanceOf(deployer.address);
+        let newBalanceOther = await liquidityBond.balanceOf(otherUser.address);
+        let newBalanceContract = await liquidityBond.balanceOf(executionPriceAddress);
+        let expectedNewBalanceUser = BigInt(initialBalanceUser) - BigInt(2e18);
+        let expectedNewBalanceOther = BigInt(initialBalanceOther) - BigInt(2e18);
+        let expectedNewBalanceContract = BigInt(initialBalanceContract) + BigInt(4e18);
+        expect(newBalanceUser.toString()).to.equal(expectedNewBalanceUser.toString());
+        expect(newBalanceOther.toString()).to.equal(expectedNewBalanceOther.toString());
+        expect(newBalanceContract.toString()).to.equal(expectedNewBalanceContract.toString());
+
+        let totalFilledAmount = await executionPrice.totalFilledAmount();
+        expect(totalFilledAmount).to.equal(0);
+
+        let numberOfTokensAvailable = await executionPrice.numberOfTokensAvailable();
+        expect(numberOfTokensAvailable).to.equal(parseEther("4"));
+
+        let startIndex = await executionPrice.startIndex();
+        expect(startIndex).to.equal(1);
+
+        let endIndex = await executionPrice.endIndex();
+        expect(endIndex).to.equal(3);
+
+        let orderIndexUser = await executionPrice.orderIndex(deployer.address);
+        expect(orderIndexUser).to.equal(1);
+
+        let orderIndexOther = await executionPrice.orderIndex(otherUser.address);
+        expect(orderIndexOther).to.equal(2);
+
+        let order1 = await executionPrice.orderBook(1);
+        expect(order1.user).to.equal(deployer.address);
+        expect(order1.quantity).to.equal(parseEther("2"));
+        expect(order1.amountFilled).to.equal(0);
+
+        let order2 = await executionPrice.orderBook(2);
+        expect(order2.user).to.equal(otherUser.address);
+        expect(order2.quantity).to.equal(parseEther("2"));
+        expect(order2.amountFilled).to.equal(0);
+    });
+
+    it("queue is empty; buy queue", async () => {
+        let tx = await liquidityBond.testMint(deployer.address, parseEther("10"));
+        await tx.wait();
+
+        let tx2 = await liquidityBond.approve(executionPriceAddress, parseEther("1"));
+        await tx2.wait();
+
+        let initialBalanceUser = await liquidityBond.balanceOf(deployer.address);
+        let initialBalanceContract = await liquidityBond.balanceOf(executionPriceAddress);
+
+        let tx3 = await executionPrice.sell(parseEther("1"))
+        await tx3.wait();
+
+        let newBalanceUser = await liquidityBond.balanceOf(deployer.address);
+        let newBalanceContract = await liquidityBond.balanceOf(executionPriceAddress);
+        let expectedNewBalanceUser = BigInt(initialBalanceUser) - BigInt(1e18);
+        let expectedNewBalanceContract = BigInt(initialBalanceContract) + BigInt(1e18);
+        expect(newBalanceUser.toString()).to.equal(expectedNewBalanceUser.toString());
+        expect(newBalanceContract.toString()).to.equal(expectedNewBalanceContract.toString());
+
+        let isBuyQueue = await executionPrice.isBuyQueue();
+        expect(isBuyQueue).to.be.false;
+
+        let totalFilledAmount = await executionPrice.totalFilledAmount();
+        expect(totalFilledAmount).to.equal(0);
+
+        let numberOfTokensAvailable = await executionPrice.numberOfTokensAvailable();
+        expect(numberOfTokensAvailable).to.equal(parseEther("1"));
+
+        let startIndex = await executionPrice.startIndex();
+        expect(startIndex).to.equal(1);
+
+        let endIndex = await executionPrice.endIndex();
+        expect(endIndex).to.equal(2);
+
+        let orderIndex = await executionPrice.orderIndex(deployer.address);
+        expect(orderIndex).to.equal(1);
+
+        let order = await executionPrice.orderBook(1);
+        expect(order.user).to.equal(deployer.address);
+        expect(order.quantity).to.equal(parseEther("1"));
+        expect(order.amountFilled).to.equal(0);
+    });
+
+    it("order filled; buy queue", async () => {
+        let tx = await liquidityBond.testMint(deployer.address, parseEther("10"));
+        await tx.wait();
+
+        let tx2 = await executionPrice.append(otherUser.address, parseEther("10"));
+        await tx2.wait();
+
+        let tx3 = await tradegenToken.transfer(executionPriceAddress, parseEther("10"));
+        await tx3.wait();
+
+        let tx4 = await liquidityBond.approve(executionPriceAddress, parseEther("2"));
+        await tx4.wait();
+
+        let initialBalanceUserBondToken = await liquidityBond.balanceOf(deployer.address);
+        let initialBalanceUserTGEN = await tradegenToken.balanceOf(deployer.address);
+        let initialBalanceContract = await tradegenToken.balanceOf(executionPriceAddress);
+
+        let tx5 = await executionPrice.sell(parseEther("2"))
+        await tx5.wait();
+
+        let newBalanceUserTGEN = await tradegenToken.balanceOf(deployer.address);
+        let newBalanceUserBondToken = await liquidityBond.balanceOf(deployer.address);
+        let newBalanceContract = await tradegenToken.balanceOf(executionPriceAddress);
+        let expectedNewBalanceUserTGEN = BigInt(initialBalanceUserTGEN) + BigInt(2e18);
+        let expectedNewBalanceUserBondToken = BigInt(initialBalanceUserBondToken) - BigInt(2e18);
+        let expectedNewBalanceContract = BigInt(initialBalanceContract) - BigInt(2e18); // 2 tokens transferred to buyer
+        expect(newBalanceUserTGEN.toString()).to.equal(expectedNewBalanceUserTGEN.toString());
+        expect(newBalanceUserBondToken.toString()).to.equal(expectedNewBalanceUserBondToken.toString());
+        expect(newBalanceContract.toString()).to.equal(expectedNewBalanceContract.toString());
+
+        let isBuyQueue = await executionPrice.isBuyQueue();
+        expect(isBuyQueue).to.be.true;
+
+        let numberOfTokensAvailable = await executionPrice.numberOfTokensAvailable();
+        expect(numberOfTokensAvailable).to.equal(parseEther("8"));
+
+        let startIndex = await executionPrice.startIndex();
+        expect(startIndex).to.equal(1);
+
+        let endIndex = await executionPrice.endIndex();
+        expect(endIndex).to.equal(2);
+
+        let orderIndexUser = await executionPrice.orderIndex(deployer.address);
+        expect(orderIndexUser).to.equal(0);
+
+        let orderIndexOther = await executionPrice.orderIndex(otherUser.address);
+        expect(orderIndexOther).to.equal(1);
+
+        let order = await executionPrice.orderBook(1);
+        expect(order.user).to.equal(otherUser.address);
+        expect(order.quantity).to.equal(parseEther("10"));
+        expect(order.amountFilled).to.equal(parseEther("2"));
+    });
+
+    it("order not filled; buy queue", async () => {
+        let tx = await liquidityBond.testMint(deployer.address, parseEther("12"));
+        await tx.wait();
+
+        // Simulate a previous 'buy' order by transferring TGEN to queue and appending order.
+        let tx2 = await executionPrice.append(otherUser.address, parseEther("10"));
+        await tx2.wait();
+
+        let tx3 = await tradegenToken.transfer(executionPriceAddress, parseEther("10"));
+        await tx3.wait();
+
+        let tx4 = await liquidityBond.approve(executionPriceAddress, parseEther("12"));
+        await tx4.wait();
+
+        let initialBalanceUserTGEN = await tradegenToken.balanceOf(deployer.address);
+        let initialBalanceUserBondToken = await liquidityBond.balanceOf(deployer.address);
+        let initialBalanceOtherBondToken = await liquidityBond.balanceOf(otherUser.address);
+        let initialBalanceContract = await tradegenToken.balanceOf(executionPriceAddress);
+        let initialBalanceOwnerBondToken = await liquidityBond.balanceOf(releaseScheduleAddress);
+
+        let tx5 = await executionPrice.sell(parseEther("12"))
+        await tx5.wait();
+
+        let newBalanceUserTGEN = await tradegenToken.balanceOf(deployer.address);
+        let newBalanceUserBondToken = await liquidityBond.balanceOf(deployer.address);
+        let newBalanceOtherBondToken = await liquidityBond.balanceOf(otherUser.address);
+        let newBalanceContract = await tradegenToken.balanceOf(executionPriceAddress);
+        let newBalanceOwnerBondToken = await liquidityBond.balanceOf(releaseScheduleAddress);
+        let expectedNewBalanceUserTGEN = BigInt(initialBalanceUserTGEN) + BigInt(10e18);
+        let expectedNewBalanceUserBondToken = BigInt(initialBalanceUserBondToken) - BigInt(12e18);
+        let expectedNewBalanceOtherBondToken = BigInt(initialBalanceOtherBondToken) + BigInt(9.95e18); // 10 bond token - fees
+        let expectedNewBalanceContract = BigInt(initialBalanceContract) - BigInt(10e18); // 10 tokens transferred to seller
+        let expectedNewBalanceOwnerBondToken = BigInt(initialBalanceOwnerBondToken) + BigInt(0.05e18); // 0.05 bond token from fees
+        expect(newBalanceUserTGEN.toString()).to.equal(expectedNewBalanceUserTGEN.toString());
+        expect(newBalanceUserBondToken.toString()).to.equal(expectedNewBalanceUserBondToken.toString());
+        expect(newBalanceOtherBondToken.toString()).to.equal(expectedNewBalanceOtherBondToken.toString());
+        expect(newBalanceContract.toString()).to.equal(expectedNewBalanceContract.toString());
+        expect(newBalanceOwnerBondToken.toString()).to.equal(expectedNewBalanceOwnerBondToken.toString());
+
+        let isBuyQueue = await executionPrice.isBuyQueue();
+        expect(isBuyQueue).to.be.false;
 
         let numberOfTokensAvailable = await executionPrice.numberOfTokensAvailable();
         expect(numberOfTokensAvailable).to.equal(parseEther("2"));

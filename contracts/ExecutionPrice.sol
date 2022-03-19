@@ -130,7 +130,7 @@ contract ExecutionPrice is IExecutionPrice {
                 _append(msg.sender, _amount.sub(filledAmount));
             }
 
-            bondToken.safeTransfer(msg.sender, filledAmount);
+            TGEN.safeTransfer(msg.sender, filledAmount);
 
             emit Sell(msg.sender, _amount, filledAmount);
         }
