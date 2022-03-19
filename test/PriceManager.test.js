@@ -65,23 +65,7 @@ describe("PriceManager", () => {
     await priceManager.deployed();
     priceManagerAddress = priceManager.address;
   });
-  /*
-  describe("#safeTransferFrom", () => {
-    it("not owner", async () => {
-        executionPrice = await ExecutionPriceFactory.deploy(tradegenTokenAddress, pairDataAddress, pairDataAddress, pairDataAddress);
-        await executionPrice.deployed();
-        executionPriceAddress = executionPrice.address;
-
-        let tx = await executionPrice.setIsInitialized(true);
-        await tx.wait();
-
-        let tx2 = await executionPrice.setOwner(otherUser.address);
-        await tx2.wait();
-
-        let tx3 = priceManager.safeTransferFrom()
-        await expect(tx3).to.be.reverted;
-    });
-  });*/
+  
   /*
   describe("#calculatePrice", () => {
     it("index > 1000", async () => {
@@ -210,7 +194,7 @@ describe("PriceManager", () => {
         expect(executionPriceInfo.index).to.equal(1);
         expect(executionPriceInfo.price).to.equal(parseEther("1"));
     });
-  });*/
+  });
 
   describe("#safeTransferFrom", () => {
     it("only NFT owner", async () => {
@@ -262,5 +246,5 @@ describe("PriceManager", () => {
         let info = await priceManager.executionPrices(1);
         expect(info.owner).to.equal(deployer.address);
     });
-  });
+  });*/
 });

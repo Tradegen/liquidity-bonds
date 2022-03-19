@@ -68,10 +68,10 @@ contract ExecutionPriceFactory is IExecutionPriceFactory, Ownable {
         //Create ExecutionPrice contract and mint an NFT.
         address executionPriceAddress = address(new ExecutionPrice(TGEN, bondToken, marketplace, xTGEN));
 
+        priceManager.register(_index, msg.sender, executionPriceAddress, price);
+
         // Update state variables before initializing contract so the transaction is not reverted when checking whether the ExecutionPrice is registered.
         ExecutionPrice(executionPriceAddress).initialize(price, _maximumNumberOfInvestors, _tradingFee, _minimumOrderSize, msg.sender);
-
-        priceManager.register(_index, msg.sender, executionPriceAddress, price);
 
         emit Purchased(msg.sender, _index);
     }
