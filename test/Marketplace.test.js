@@ -79,5 +79,21 @@ describe("Marketplace", () => {
         let fee = await marketplace.transactionFee();
         expect(fee).to.equal(200);
     });
+
+    it("above max fee", async () => {
+        let tx = marketplace.setTransactionFee(5000);
+        await expect(tx).to.be.reverted;
+
+        let fee = await marketplace.transactionFee();
+        expect(fee).to.equal(200);
+    });
+
+    it("meets requirements", async () => {
+        let tx = await marketplace.setTransactionFee(100);
+        await tx.wait();
+
+        let fee = await marketplace.transactionFee();
+        expect(fee).to.equal(100);
+    });
   });
 });
