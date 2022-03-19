@@ -20,12 +20,12 @@ interface IPriceManager {
 
     // Mutative
 
-   /**
-     * @dev Purchases the ExecutionPrice NFT at the given index.
+    /**
+     * @dev Registers the NFT at the given index.
      * @param _index index of the ExecutionPrice NFT.
-     * @param _maximumNumberOfInvestors the maximum number of open orders the queue can have.
-     * @param _tradingFee fee that is paid to the contract owner whenever an order is filled; denominated by 10000.
-     * @param _minimumOrderSize minimum number of bond tokens per order.
+     * @param _owner Address of the NFT's owner.
+     * @param _contractAddress Address of the ExecutionPrice associated with this NFT.
+     * @param _price The price at which trades in the ExecutionPrice NFT will execute.
      */
-    function purchase(uint256 _index, uint256 _maximumNumberOfInvestors, uint256 _tradingFee, uint256 _minimumOrderSize) external;
+    function register(uint256 _index, address _owner, address _contractAddress, uint256 _price) external;
 }

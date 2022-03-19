@@ -32,10 +32,7 @@ contract PriceManager is IPriceManager, ERC1155 {
 
     /* ========== STATE VARIABLES ========== */
 
-    address public immutable TGEN;
-    address public immutable xTGEN;
-    address public immutable marketplace;
-    address public immutable bondToken;
+    address public immutable factory;
 
     uint256 public numberOfMints;
     mapping(uint256 => ExecutionPriceInfo) public executionPrices;
@@ -43,16 +40,10 @@ contract PriceManager is IPriceManager, ERC1155 {
 
     /* ========== CONSTRUCTOR ========== */
 
-    constructor(address _TGEN, address _xTGEN, address _marketplace, address _bondToken) ERC1155() {
-        require(_TGEN != address(0), "PriceManager: invalid address for TGEN.");
-        require(_xTGEN != address(0), "PriceManager: invalid address for xTGEN.");
-        require(_marketplace != address(0), "PriceManager: invalid address for marketplace.");
-        require(_bondToken != address(0), "PriceManager: invalid address for bond token.");
+    constructor(address _factory) ERC1155() {
+        require(_factory != address(0), "PriceManager: invalid address for factory.");
 
-        TGEN = _TGEN;
-        xTGEN = _xTGEN;
-        marketplace = _marketplace;
-        bondToken = _bondToken;
+        factory = _factory;
     }
 
     /* ========== VIEWS ========== */
@@ -112,45 +103,7 @@ contract PriceManager is IPriceManager, ERC1155 {
         return executionPrices[reverseLookup[_contractAddress]].owner != address(0);
     }
 
-
     /* ========== MUTATIVE FUNCTIONS ========== */
-
-    /**
-     * @dev Purchases the ExecutionPrice NFT at the given index.
-     * @param _index index of the ExecutionPrice NFT.
-     * @param _maximumNumberOfInvestors the maximum number of open orders the queue can have.
-     * @param _tradingFee fee that is paid to the contract owner whenever an order is filled; denominated by 10000.
-     * @param _minimumOrderSize minimum number of bond tokens per order.
-     */
-    function purchase(uint256 _index, uint256 _maximumNumberOfInvestors, uint256 _tradingFee, uint256 _minimumOrderSize) external override notMinted(_index) {
-        require(_index >= 0, "PriceManager: index must be positive.");
-        require(_index < MAX_INDEX, "PriceManager: index is too high.");
-
-        uint256 price = calculatePrice(_index);
-
-        IERC20(bondToken).safeTransferFrom(msg.sender, address(this), MINT_COST);
-
-        // Burn received bond tokens.
-        IERC20(bondToken).safeTransfer(address(0), MINT_COST);
-
-        //Create ExecutionPrice contract and mint an NFT.
-        address executionPriceAddress = address(new ExecutionPrice(TGEN, bondToken, marketplace, xTGEN));
-        _mint(msg.sender, _index, 1, "");
-
-        numberOfMints = numberOfMints.add(1);
-        reverseLookup[executionPriceAddress] = _index;
-        executionPrices[_index] = ExecutionPriceInfo({
-            owner: msg.sender,
-            contractAddress: executionPriceAddress,
-            price: price,
-            index: _index
-        });
-
-        // Update state variables before initializing contract so the transaction is not reverted when checking whether the ExecutionPrice is registered.
-        ExecutionPrice(executionPriceAddress).initialize(price, _maximumNumberOfInvestors, _tradingFee, _minimumOrderSize, msg.sender);
-
-        emit Purchased(msg.sender, _index);
-    }
 
     /**
     * @dev Transfers tokens from seller to buyer.
@@ -177,6 +130,30 @@ contract PriceManager is IPriceManager, ERC1155 {
     // Prevent transfer of multiple NFTs in one transaction.
     function safeBatchTransferFrom(address from, address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) public override {}
 
+    /* ========== RESTRICTED FUNCTIONS ========== */
+
+    /**
+     * @dev Registers the NFT at the given index.
+     * @param _index index of the ExecutionPrice NFT.
+     * @param _owner Address of the NFT's owner.
+     * @param _contractAddress Address of the ExecutionPrice associated with this NFT.
+     * @param _price The price at which trades in the ExecutionPrice NFT will execute.
+     */
+    function register(uint256 _index, address _owner, address _contractAddress, uint256 _price) external onlyFactory notMinted(_index) {
+        _mint(_owner, _index, 1, "");
+
+        numberOfMints = numberOfMints.add(1);
+        reverseLookup[_contractAddress] = _index;
+        executionPrices[_index] = ExecutionPriceInfo({
+            owner: _owner,
+            contractAddress: _contractAddress,
+            price: _price,
+            index: _index
+        });
+
+        emit Registered(_index, _owner, _contractAddress, _price);
+    }
+
     /* ========== MODIFIERS ========== */
 
     modifier notMinted(uint256 _index) {
@@ -184,7 +161,13 @@ contract PriceManager is IPriceManager, ERC1155 {
         _;
     }
 
+    modifier onlyFactory() {
+        require(msg.sender == factory, "PriceManager: only the factory contract can call this function.");
+        _;
+    }
+
     /* ========== EVENTS ========== */
 
     event Purchased(address indexed buyer, uint256 index);
+    event Registered(uint256 indexed index, address owner, address contractAddress, uint256 price);
 }

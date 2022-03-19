@@ -53,58 +53,35 @@ describe("PriceManager", () => {
     otherUser = signers[1];
 
     // Use mock CELO as bond token.
-    // Use pairDataAddress2 as mock marketplace.
-    priceManager = await PriceManagerFactory.deploy(tradegenTokenAddress, pairDataAddress, pairDataAddress2, mockCELOAddress);
+    // Use pairDataAddress as mock marketplace.
+    // Use pairDataAddress as xTGEN.
+    priceManager = await PriceManagerFactory.deploy(tradegenTokenAddress, pairDataAddress, pairDataAddress, mockCELOAddress);
     await priceManager.deployed();
     priceManagerAddress = priceManager.address;
   });
   /*
-  describe("#updateTradingFee", () => {
+  describe("#safeTransferFrom", () => {
     it("not owner", async () => {
-        let tx = executionPrice.connect(otherUser).updateTradingFee(100)
-        await expect(tx).to.be.reverted;
+        executionPrice = await ExecutionPriceFactory.deploy(tradegenTokenAddress, pairDataAddress, pairDataAddress, pairDataAddress);
+        await executionPrice.deployed();
+        executionPriceAddress = executionPrice.address;
 
-        let fee = await executionPrice.tradingFee();
-        expect(fee).to.equal(50);
-    });
-
-    it("not initialized", async () => {
-        let tx = await executionPrice.setOwner(deployer.address)
-        await tx.wait();
-
-        let tx2 = executionPrice.updateTradingFee(100)
-        await expect(tx2).to.be.reverted;
-
-        let fee = await executionPrice.tradingFee();
-        expect(fee).to.equal(50);
-    });
-
-    it("> max trading fee", async () => {
         let tx = await executionPrice.setIsInitialized(true);
         await tx.wait();
 
-        let tx2 = await executionPrice.setOwner(deployer.address)
+        let tx2 = await executionPrice.setOwner(otherUser.address);
         await tx2.wait();
 
-        let tx3 = executionPrice.updateTradingFee(2000)
+        let tx3 = priceManager.safeTransferFrom()
         await expect(tx3).to.be.reverted;
-
-        let fee = await executionPrice.tradingFee();
-        expect(fee).to.equal(50);
-    });
-
-    it("meets requirements", async () => {
-        let tx = await executionPrice.setIsInitialized(true);
-        await tx.wait();
-
-        let tx2 = await executionPrice.setOwner(deployer.address)
-        await tx2.wait();
-
-        let tx3 = await executionPrice.updateTradingFee(100)
-        await tx3.wait();
-
-        let fee = await executionPrice.tradingFee();
-        expect(fee).to.equal(100);
     });
   });*/
+
+  describe("#calculatePrice", () => {
+    it("index > 1000", async () => {
+        let price = await priceManager.calculatePrice(2000);
+        let expectedPrice = BigInt(parseEther("20959.1556")) * BigInt(2);
+        expect(price.toString()).to.equal(expectedPrice.toString());
+    });
+  });
 });
