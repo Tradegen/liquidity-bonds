@@ -52,8 +52,8 @@ contract ExecutionPriceFactory is Ownable {
      * @param _minimumOrderSize minimum number of bond tokens per order.
      */
     function purchase(uint256 _index, uint256 _maximumNumberOfInvestors, uint256 _tradingFee, uint256 _minimumOrderSize) external priceManagerIsSet {
-        require(_index >= 0, "PriceManager: index must be positive.");
-        require(_index < MAX_INDEX, "PriceManager: index is too high.");
+        require(_index > 0, "PriceManager: index must be positive.");
+        require(_index <= MAX_INDEX, "PriceManager: index is too high.");
 
         uint256 price = priceManager.calculatePrice(_index);
 

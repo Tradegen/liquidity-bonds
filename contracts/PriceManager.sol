@@ -36,7 +36,7 @@ contract PriceManager is IPriceManager, ERC1155 {
 
     uint256 public numberOfMints;
     mapping(uint256 => ExecutionPriceInfo) public executionPrices;
-    mapping(address => uint256) public reverseLookup;
+    mapping(address => uint256) public reverseLookup; // Start at index 1.
 
     /* ========== CONSTRUCTOR ========== */
 
@@ -53,12 +53,14 @@ contract PriceManager is IPriceManager, ERC1155 {
      * @param _index index of the ExecutionPrice NFT.
      */
     function calculatePrice(uint256 _index) public view override returns (uint256) {
+        require (_index > 0 && _index <= MAX_INDEX, "PriceManager: index out of range.");
+
         if (executionPrices[_index].price > 0) {
             return executionPrices[_index].price;
         }
 
         uint256 result = 1e18;
-        uint256 index = _index;
+        uint256 index = _index.sub(1);
         uint256 i;
 
         // Check 1's digit.
@@ -134,6 +136,7 @@ contract PriceManager is IPriceManager, ERC1155 {
 
     /**
      * @dev Registers the NFT at the given index.
+     * @notice Assumes parameters were checked by the calling function.
      * @param _index index of the ExecutionPrice NFT.
      * @param _owner Address of the NFT's owner.
      * @param _contractAddress Address of the ExecutionPrice associated with this NFT.
