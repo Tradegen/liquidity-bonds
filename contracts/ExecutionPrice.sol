@@ -177,10 +177,13 @@ contract ExecutionPrice is IExecutionPrice {
         if ((_buy && isBuyQueue) || (!_buy && !isBuyQueue)) {
             // Cancels the order if the new amount is less than the filled amount.
             if (_amount < orderBook[orderIndex[msg.sender]].amountFilled) {
+                numberOfTokensAvailable = numberOfTokensAvailable.sub(orderBook[orderIndex[msg.sender]].quantity.sub(orderBook[orderIndex[msg.sender]].amountFilled));
                 orderBook[orderIndex[msg.sender]].quantity = orderBook[orderIndex[msg.sender]].amountFilled;
             }
             // Amount is less than previous amount, so release tokens held in escrow.
             else if (_amount <= orderBook[orderIndex[msg.sender]].quantity) {
+                numberOfTokensAvailable = numberOfTokensAvailable.sub(orderBook[orderIndex[msg.sender]].quantity.sub(_amount));
+
                 if (_buy) {
                     TGEN.transfer(msg.sender, (orderBook[orderIndex[msg.sender]].quantity.sub(_amount)).mul(price).div(1e18));
                 }
@@ -194,6 +197,8 @@ contract ExecutionPrice is IExecutionPrice {
             }
             // Amount is more than previous amount, so transfer tokens to this contract to hold in escrow.
             else {
+                numberOfTokensAvailable = numberOfTokensAvailable.add(_amount).sub(orderBook[orderIndex[msg.sender]].quantity);
+
                 if (_buy) {
                     TGEN.safeTransferFrom(msg.sender, address(this), (_amount.sub(orderBook[orderIndex[msg.sender]].quantity)).mul(price).div(1e18));
                 }
@@ -209,6 +214,8 @@ contract ExecutionPrice is IExecutionPrice {
         // Order type is different from that of the queue.
         // Releases user's tokens from escrow, cancels the existing order, and create order opposite the queue's type.
         else {
+            numberOfTokensAvailable = numberOfTokensAvailable.sub(orderBook[orderIndex[msg.sender]].quantity.sub(orderBook[orderIndex[msg.sender]].amountFilled));
+
             if (_buy) {
                 bondToken.transfer(msg.sender, orderBook[orderIndex[msg.sender]].quantity.sub(orderBook[orderIndex[msg.sender]].amountFilled));
 
