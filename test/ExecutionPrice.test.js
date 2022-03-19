@@ -1681,7 +1681,7 @@ describe("ExecutionPrice", () => {
         expect(order2.quantity).to.equal(parseEther("2"));
         expect(order2.amountFilled).to.equal(0);
     });
-  });*/
+  });
 
   describe("#updateOrder", () => {
     beforeEach(async () => {
@@ -1710,7 +1710,7 @@ describe("ExecutionPrice", () => {
         let tx5 = await executionPrice.setIsInitialized(true);
         await tx5.wait();
     });
-    /*
+    
     it("less than minimum order size", async () => {
         let tx = await tradegenToken.approve(executionPriceAddress, parseEther("0.001"));
         await tx.wait();
@@ -2145,7 +2145,7 @@ describe("ExecutionPrice", () => {
         expect(order2.user).to.equal(deployer.address);
         expect(order2.quantity).to.equal(parseEther("1"));
         expect(order2.amountFilled).to.equal(0);
-    });*/
+    });
 
     it("buy queue and sell; no existing sell orders", async () => {
         let tx = await liquidityBond.testMint(deployer.address, parseEther("10"));
@@ -2205,5 +2205,5 @@ describe("ExecutionPrice", () => {
         expect(order2.quantity).to.equal(parseEther("1"));
         expect(order2.amountFilled).to.equal(0);
     });
-  });
+  });*/
 });
