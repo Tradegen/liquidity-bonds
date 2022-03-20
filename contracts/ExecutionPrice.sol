@@ -251,7 +251,7 @@ contract ExecutionPrice is IExecutionPrice {
     /**
      * @dev Adds an order to the end of the queue.
      * @param _user address of the user placing this order.
-     * @param _amount number of bond tokens (buy queue) or TGEN (sell queue).
+     * @param _amount number of bond tokens.
      */
     function _append(address _user, uint256 _amount) internal {
         orderBook[endIndex] = Order({
@@ -270,7 +270,7 @@ contract ExecutionPrice is IExecutionPrice {
      * @notice If queue is a 'buy queue', this will be treated as a 'sell' order. 
      * @notice Fee is paid in bond tokens if queue is a 'sell queue'.
      * @param _amount number of bond tokens.
-     * @return totalFilledAmount - number of tokens bought/sold. Represents bond tokens when this is a 'buy queue'.
+     * @return totalFilledAmount - number of bond tokens bought/sold.
      */
     function _executeOrder(uint256 _amount) internal returns (uint256 totalFilledAmount) {
         uint256 filledAmount;
@@ -295,10 +295,10 @@ contract ExecutionPrice is IExecutionPrice {
             orderBook[start].amountFilled = orderBook[start].amountFilled.add(filledAmount);
 
             if (isBuyQueue) {
-                bondToken.transfer(orderBook[start].user, filledAmount.mul(price).mul(10000 - tradingFee).div(1e18).div(10000));
+                bondToken.transfer(orderBook[start].user, filledAmount.mul(10000 - tradingFee).div(10000));
             }
             else {
-                TGEN.transfer(orderBook[start].user, filledAmount.mul(10000 - tradingFee).div(10000));
+                TGEN.transfer(orderBook[start].user, filledAmount.mul(price).mul(10000 - tradingFee).div(1e18).div(10000));
             }
 
             // Exit early when order is filled.
@@ -363,7 +363,7 @@ contract ExecutionPrice is IExecutionPrice {
 
     /**
      * @dev Updates the owner of this ExecutionPrice.
-     * @notice This function is meant to be called by the PriceManager contract whenever the
+     * @notice This function is meant to be called by the ExecutionPriceFactory contract whenever the
      *          ExecutionPrice NFT is purchased by another user.
      * @param _newOwner the new contract owner.
      */
@@ -378,7 +378,7 @@ contract ExecutionPrice is IExecutionPrice {
 
     /**
      * @dev Initializes the contract's parameters.
-     * @notice This function is meant to be called by the PriceManager contract when creating this contract.
+     * @notice This function is meant to be called by the ExecutionPriceFactory contract when creating this contract.
      * @param _price the price of each bond token.
      * @param _maximumNumberOfInvestors the maximum number of open orders the queue can have.
      * @param _tradingFee fee that is paid to the contract owner whenever an order is filled; denominated by 10000.
