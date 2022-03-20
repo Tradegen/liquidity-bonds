@@ -336,7 +336,7 @@ describe("Marketplace", () => {
         expect(listing2.ID).to.equal(2);
         expect(listing2.price).to.equal(parseEther("20"));
     });
-  });*/
+  });
 
   describe("#updatePrice", () => {
     it("not seller", async () => {
@@ -451,6 +451,180 @@ describe("Marketplace", () => {
         expect(listing.exists).to.be.true;
         expect(listing.ID).to.equal(1);
         expect(listing.price).to.equal(parseEther("20"));
+    });
+  });*/
+
+  describe("#removeListing", () => {
+    it("not seller", async () => {
+        let tx = await mockCELO.approve(executionPriceFactoryAddress, parseEther("100"));
+        await tx.wait();
+
+        let tx2 = await executionPriceFactory.purchase(1, 20, 100, parseEther("50"));
+        await tx2.wait();
+
+        let tx3 = await priceManager.setApprovalForAll(marketplaceAddress, true);
+        await tx3.wait();
+
+        let tx4 = await marketplace.createListing(1, parseEther("10"));
+        await tx4.wait();
+
+        let tx5 = marketplace.connect(otherUser).removeListing(1);
+        await expect(tx5).to.be.reverted;
+
+        let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
+        expect(numberOfMarketplaceListings).to.equal(1);
+
+        let listingIndex = await marketplace.listingIndexes(1);
+        expect(listingIndex).to.equal(1);
+
+        let balanceDeployer = await priceManager.balanceOf(deployer.address, 1);
+        expect(balanceDeployer).to.equal(0);
+
+        let balanceMarketplace = await priceManager.balanceOf(marketplaceAddress, 1);
+        expect(balanceMarketplace).to.equal(1);
+
+        let userToID = await marketplace.userToID(deployer.address, 1);
+        expect(userToID).to.equal(1);
+
+        let listing = await marketplace.marketplaceListings(1);
+        expect(listing.seller).to.equal(deployer.address);
+        expect(listing.exists).to.be.true;
+        expect(listing.ID).to.equal(1);
+        expect(listing.price).to.equal(parseEther("10"));
+    });
+
+    it("index out of range", async () => {
+        let tx = await mockCELO.approve(executionPriceFactoryAddress, parseEther("100"));
+        await tx.wait();
+
+        let tx2 = await executionPriceFactory.purchase(1, 20, 100, parseEther("50"));
+        await tx2.wait();
+
+        let tx3 = await priceManager.setApprovalForAll(marketplaceAddress, true);
+        await tx3.wait();
+
+        let tx4 = await marketplace.createListing(1, parseEther("10"));
+        await tx4.wait();
+
+        let tx5 = marketplace.removeListing(10);
+        await expect(tx5).to.be.reverted;
+
+        let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
+        expect(numberOfMarketplaceListings).to.equal(1);
+
+        let listingIndex = await marketplace.listingIndexes(1);
+        expect(listingIndex).to.equal(1);
+
+        let balanceDeployer = await priceManager.balanceOf(deployer.address, 1);
+        expect(balanceDeployer).to.equal(0);
+
+        let balanceMarketplace = await priceManager.balanceOf(marketplaceAddress, 1);
+        expect(balanceMarketplace).to.equal(1);
+
+        let userToID = await marketplace.userToID(deployer.address, 1);
+        expect(userToID).to.equal(1);
+
+        let listing = await marketplace.marketplaceListings(1);
+        expect(listing.seller).to.equal(deployer.address);
+        expect(listing.exists).to.be.true;
+        expect(listing.ID).to.equal(1);
+        expect(listing.price).to.equal(parseEther("10"));
+    });
+
+    it("meets requirements", async () => {
+        let tx = await mockCELO.approve(executionPriceFactoryAddress, parseEther("100"));
+        await tx.wait();
+
+        let tx2 = await executionPriceFactory.purchase(1, 20, 100, parseEther("50"));
+        await tx2.wait();
+
+        let tx3 = await priceManager.setApprovalForAll(marketplaceAddress, true);
+        await tx3.wait();
+
+        let tx4 = await marketplace.createListing(1, parseEther("10"));
+        await tx4.wait();
+
+        let initialBalanceUser = await priceManager.balanceOf(deployer.address, 1);
+        let initialBalanceMarketplace = await priceManager.balanceOf(marketplaceAddress, 1);
+        expect(initialBalanceUser).to.equal(0);
+        expect(initialBalanceMarketplace).to.equal(1);
+
+        let tx5 = await marketplace.removeListing(1);
+        await tx5.wait();
+
+        let newBalanceUser = await priceManager.balanceOf(deployer.address, 1);
+        let newBalanceMarketplace = await priceManager.balanceOf(marketplaceAddress, 1);
+        expect(newBalanceUser).to.equal(1);
+        expect(newBalanceMarketplace).to.equal(0);
+
+        let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
+        expect(numberOfMarketplaceListings).to.equal(1);
+
+        let listingIndex = await marketplace.listingIndexes(1);
+        expect(listingIndex).to.equal(1);
+
+        let userToID = await marketplace.userToID(deployer.address, 1);
+        expect(userToID).to.equal(0);
+
+        let listing = await marketplace.marketplaceListings(1);
+        expect(listing.seller).to.equal(deployer.address);
+        expect(listing.exists).to.be.false;
+        expect(listing.ID).to.equal(1);
+        expect(listing.price).to.equal(parseEther("10"));
+    });
+
+    it("remove and create again", async () => {
+        let tx = await mockCELO.approve(executionPriceFactoryAddress, parseEther("100"));
+        await tx.wait();
+
+        let tx2 = await executionPriceFactory.purchase(1, 20, 100, parseEther("50"));
+        await tx2.wait();
+
+        let tx3 = await priceManager.setApprovalForAll(marketplaceAddress, true);
+        await tx3.wait();
+
+        let tx4 = await marketplace.createListing(1, parseEther("10"));
+        await tx4.wait();
+
+        let initialBalanceUser = await priceManager.balanceOf(deployer.address, 1);
+        let initialBalanceMarketplace = await priceManager.balanceOf(marketplaceAddress, 1);
+        expect(initialBalanceUser).to.equal(0);
+        expect(initialBalanceMarketplace).to.equal(1);
+
+        let tx5 = await marketplace.removeListing(1);
+        await tx5.wait();
+
+        let tx6 = await priceManager.setApprovalForAll(marketplaceAddress, true);
+        await tx6.wait();
+
+        let tx7 = await marketplace.createListing(1, parseEther("20"));
+        await tx7.wait();
+
+        let newBalanceUser = await priceManager.balanceOf(deployer.address, 1);
+        let newBalanceMarketplace = await priceManager.balanceOf(marketplaceAddress, 1);
+        expect(newBalanceUser).to.equal(initialBalanceUser);
+        expect(newBalanceMarketplace).to.equal(initialBalanceMarketplace);
+
+        let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
+        expect(numberOfMarketplaceListings).to.equal(2);
+
+        let listingIndex = await marketplace.listingIndexes(1);
+        expect(listingIndex).to.equal(2);
+
+        let userToID = await marketplace.userToID(deployer.address, 1);
+        expect(userToID).to.equal(2);
+
+        let listing1 = await marketplace.marketplaceListings(1);
+        expect(listing1.seller).to.equal(deployer.address);
+        expect(listing1.exists).to.be.false;
+        expect(listing1.ID).to.equal(1);
+        expect(listing1.price).to.equal(parseEther("10"));
+
+        let listing2 = await marketplace.marketplaceListings(2);
+        expect(listing2.seller).to.equal(deployer.address);
+        expect(listing2.exists).to.be.true;
+        expect(listing2.ID).to.equal(1);
+        expect(listing2.price).to.equal(parseEther("20"));
     });
   });
 });

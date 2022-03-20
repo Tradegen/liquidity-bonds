@@ -177,7 +177,6 @@ contract Marketplace is IMarketplace, ERC1155Holder, Ownable {
     */
     function _removeListing(address _user, uint256 _index) internal {
         marketplaceListings[_index].exists = false;
-
         userToID[_user][marketplaceListings[_index].ID] = 0;
     }
 
