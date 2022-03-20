@@ -452,7 +452,7 @@ describe("Marketplace", () => {
         expect(listing.ID).to.equal(1);
         expect(listing.price).to.equal(parseEther("20"));
     });
-  });*/
+  });
 
   describe("#removeListing", () => {
     it("not seller", async () => {
@@ -625,6 +625,211 @@ describe("Marketplace", () => {
         expect(listing2.exists).to.be.true;
         expect(listing2.ID).to.equal(1);
         expect(listing2.price).to.equal(parseEther("20"));
+    });
+  });*/
+
+  describe("#purchase", () => {
+    it("index out of range", async () => {
+        let tx = await mockCELO.approve(executionPriceFactoryAddress, parseEther("100"));
+        await tx.wait();
+
+        let tx2 = await executionPriceFactory.purchase(1, 20, 100, parseEther("50"));
+        await tx2.wait();
+
+        let tx3 = await priceManager.setApprovalForAll(marketplaceAddress, true);
+        await tx3.wait();
+
+        let tx4 = await marketplace.createListing(1, parseEther("10"));
+        await tx4.wait();
+
+        let tx5 = await tradegenToken.transfer(otherUser.address, parseEther("10"));
+        await tx5.wait();
+        
+        let tx6 = await tradegenToken.connect(otherUser).approve(marketplaceAddress, parseEther("10"));
+        await tx6.wait();
+
+        let initialBalanceTGEN = await tradegenToken.balanceOf(otherUser.address);
+
+        let tx7 = marketplace.connect(otherUser).purchase(10);
+        await expect(tx7).to.be.reverted;
+
+        let newBalanceTGEN = await tradegenToken.balanceOf(otherUser.address);
+        expect(newBalanceTGEN).to.equal(initialBalanceTGEN);
+
+        let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
+        expect(numberOfMarketplaceListings).to.equal(1);
+
+        let listingIndex = await marketplace.listingIndexes(1);
+        expect(listingIndex).to.equal(1);
+
+        let balanceDeployer = await priceManager.balanceOf(deployer.address, 1);
+        expect(balanceDeployer).to.equal(0);
+
+        let balanceMarketplace = await priceManager.balanceOf(marketplaceAddress, 1);
+        expect(balanceMarketplace).to.equal(1);
+
+        let userToID = await marketplace.userToID(deployer.address, 1);
+        expect(userToID).to.equal(1);
+
+        let listing = await marketplace.marketplaceListings(1);
+        expect(listing.seller).to.equal(deployer.address);
+        expect(listing.exists).to.be.true;
+        expect(listing.ID).to.equal(1);
+        expect(listing.price).to.equal(parseEther("10"));
+    });
+
+    it("listing doesn't exist", async () => {
+        let tx = await mockCELO.approve(executionPriceFactoryAddress, parseEther("100"));
+        await tx.wait();
+
+        let tx2 = await executionPriceFactory.purchase(1, 20, 100, parseEther("50"));
+        await tx2.wait();
+
+        let tx3 = await priceManager.setApprovalForAll(marketplaceAddress, true);
+        await tx3.wait();
+
+        let tx4 = await marketplace.createListing(1, parseEther("10"));
+        await tx4.wait();
+
+        let tx5 = await marketplace.removeListing(1);
+        await tx5.wait();
+
+        let tx6 = await tradegenToken.transfer(otherUser.address, parseEther("10"));
+        await tx6.wait();
+        
+        let tx7 = await tradegenToken.connect(otherUser).approve(marketplaceAddress, parseEther("10"));
+        await tx7.wait();
+
+        let initialBalanceTGEN = await tradegenToken.balanceOf(otherUser.address);
+
+        let tx8 = marketplace.connect(otherUser).purchase(1);
+        await expect(tx8).to.be.reverted;
+
+        let newBalanceTGEN = await tradegenToken.balanceOf(otherUser.address);
+        expect(newBalanceTGEN).to.equal(initialBalanceTGEN);
+
+        let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
+        expect(numberOfMarketplaceListings).to.equal(1);
+
+        let listingIndex = await marketplace.listingIndexes(1);
+        expect(listingIndex).to.equal(1);
+
+        let balanceDeployer = await priceManager.balanceOf(deployer.address, 1);
+        expect(balanceDeployer).to.equal(1);
+
+        let balanceMarketplace = await priceManager.balanceOf(marketplaceAddress, 1);
+        expect(balanceMarketplace).to.equal(0);
+
+        let userToID = await marketplace.userToID(deployer.address, 1);
+        expect(userToID).to.equal(0);
+
+        let listing = await marketplace.marketplaceListings(1);
+        expect(listing.seller).to.equal(deployer.address);
+        expect(listing.exists).to.be.false;
+        expect(listing.ID).to.equal(1);
+        expect(listing.price).to.equal(parseEther("10"));
+    });
+
+    it("can't purchase your own position", async () => {
+        let tx = await mockCELO.approve(executionPriceFactoryAddress, parseEther("100"));
+        await tx.wait();
+
+        let tx2 = await executionPriceFactory.purchase(1, 20, 100, parseEther("50"));
+        await tx2.wait();
+
+        let tx3 = await priceManager.setApprovalForAll(marketplaceAddress, true);
+        await tx3.wait();
+
+        let tx4 = await marketplace.createListing(1, parseEther("10"));
+        await tx4.wait();
+        
+        let tx5 = await tradegenToken.approve(marketplaceAddress, parseEther("10"));
+        await tx5.wait();
+
+        let initialBalanceTGEN = await tradegenToken.balanceOf(otherUser.address);
+
+        let tx6 = marketplace.purchase(1);
+        await expect(tx6).to.be.reverted;
+
+        let newBalanceTGEN = await tradegenToken.balanceOf(otherUser.address);
+        expect(newBalanceTGEN).to.equal(initialBalanceTGEN);
+
+        let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
+        expect(numberOfMarketplaceListings).to.equal(1);
+
+        let listingIndex = await marketplace.listingIndexes(1);
+        expect(listingIndex).to.equal(1);
+
+        let balanceDeployer = await priceManager.balanceOf(deployer.address, 1);
+        expect(balanceDeployer).to.equal(0);
+
+        let balanceMarketplace = await priceManager.balanceOf(marketplaceAddress, 1);
+        expect(balanceMarketplace).to.equal(1);
+
+        let userToID = await marketplace.userToID(deployer.address, 1);
+        expect(userToID).to.equal(1);
+
+        let listing = await marketplace.marketplaceListings(1);
+        expect(listing.seller).to.equal(deployer.address);
+        expect(listing.exists).to.be.true;
+        expect(listing.ID).to.equal(1);
+        expect(listing.price).to.equal(parseEther("10"));
+    });
+
+    it("meets requirements", async () => {
+        let tx = await mockCELO.approve(executionPriceFactoryAddress, parseEther("100"));
+        await tx.wait();
+
+        let tx2 = await executionPriceFactory.purchase(1, 20, 100, parseEther("50"));
+        await tx2.wait();
+
+        let tx3 = await priceManager.setApprovalForAll(marketplaceAddress, true);
+        await tx3.wait();
+
+        let tx4 = await marketplace.createListing(1, parseEther("10"));
+        await tx4.wait();
+
+        let tx5 = await tradegenToken.transfer(otherUser.address, parseEther("10"));
+        await tx5.wait();
+        
+        let tx6 = await tradegenToken.connect(otherUser).approve(marketplaceAddress, parseEther("10"));
+        await tx6.wait();
+
+        let initialBalanceUserTGEN = await tradegenToken.balanceOf(otherUser.address);
+        let initialBalanceSellerTGEN = await tradegenToken.balanceOf(deployer.address);
+        let initialBalanceStakingTGEN = await tradegenToken.balanceOf(pairDataAddress);
+
+        let tx8 = await marketplace.connect(otherUser).purchase(1);
+        await tx8.wait();
+
+        let newBalanceUserTGEN = await tradegenToken.balanceOf(otherUser.address);
+        let newBalanceSellerTGEN = await tradegenToken.balanceOf(deployer.address);
+        let newBalanceStakingTGEN = await tradegenToken.balanceOf(pairDataAddress);
+        let newBalanceUserNFT = await priceManager.balanceOf(otherUser.address, 1);
+        let newBalanceMarketplaceNFT = await priceManager.balanceOf(marketplaceAddress, 1);
+        let expectedNewBalanceUserTGEN = BigInt(initialBalanceUserTGEN) - BigInt(10e18);
+        let expectedNewBalanceSellerTGEN = BigInt(initialBalanceSellerTGEN) + BigInt(9.8e18);
+        let expectedNewBalanceStakingTGEN = BigInt(initialBalanceStakingTGEN) + BigInt(0.2e18);
+        expect(newBalanceUserTGEN.toString()).to.equal(expectedNewBalanceUserTGEN.toString());
+        expect(newBalanceSellerTGEN.toString()).to.equal(expectedNewBalanceSellerTGEN.toString());
+        expect(newBalanceStakingTGEN.toString()).to.equal(expectedNewBalanceStakingTGEN.toString());
+        expect(newBalanceUserNFT).to.equal(1);
+        expect(newBalanceMarketplaceNFT).to.equal(0);
+
+        let numberOfMarketplaceListings = await marketplace.numberOfMarketplaceListings();
+        expect(numberOfMarketplaceListings).to.equal(1);
+
+        let listingIndex = await marketplace.listingIndexes(1);
+        expect(listingIndex).to.equal(1);
+
+        let userToID = await marketplace.userToID(deployer.address, 1);
+        expect(userToID).to.equal(0);
+
+        let listing = await marketplace.marketplaceListings(1);
+        expect(listing.seller).to.equal(deployer.address);
+        expect(listing.exists).to.be.false;
+        expect(listing.ID).to.equal(1);
+        expect(listing.price).to.equal(parseEther("10"));
     });
   });
 });
