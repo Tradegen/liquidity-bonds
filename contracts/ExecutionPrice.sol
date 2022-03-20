@@ -32,7 +32,7 @@ contract ExecutionPrice is IExecutionPrice {
 
     IERC20 public immutable TGEN;
     IERC20 public immutable bondToken;
-    address public priceManager;
+    address public factory;
     address public immutable marketplace;
     address public immutable xTGEN;
     uint256 public price; // Number of TGEN per bond token
@@ -59,7 +59,7 @@ contract ExecutionPrice is IExecutionPrice {
 
         TGEN = IERC20(_TGEN);
         bondToken = IERC20(_bondToken);
-        priceManager = msg.sender;
+        factory = msg.sender;
         marketplace = _marketplace;
         xTGEN = _xTGEN;
         isBuyQueue = true;
@@ -356,7 +356,7 @@ contract ExecutionPrice is IExecutionPrice {
      *          ExecutionPrice NFT is purchased by another user.
      * @param _newOwner the new contract owner.
      */
-    function updateContractOwner(address _newOwner) external override onlyPriceManager isInitialized {
+    function updateContractOwner(address _newOwner) external override onlyFactory isInitialized {
         require(_newOwner != address(0), "ExecutionPrice: invalid address for new owner.");
         require(_newOwner != owner, "ExecutionPrice: owner is the same.");
 
@@ -374,7 +374,7 @@ contract ExecutionPrice is IExecutionPrice {
      * @param _minimumOrderSize minimum number of bond tokens per order.
      * @param _owner address of the contract owner.
      */
-    function initialize(uint256 _price, uint256 _maximumNumberOfInvestors, uint256 _tradingFee, uint256 _minimumOrderSize, address _owner) external override onlyPriceManager isNotInitialized {
+    function initialize(uint256 _price, uint256 _maximumNumberOfInvestors, uint256 _tradingFee, uint256 _minimumOrderSize, address _owner) external override onlyFactory isNotInitialized {
         require(_price > 0, "ExecutionPrice: price must be positive.");
         require(_maximumNumberOfInvestors >= MIN_MAXIMUM_NUMBER_OF_INVESTORS, "ExecutionPrice: maximum number of investors is too low.");
         require(_maximumNumberOfInvestors <= MAX_MAXIMUM_NUMBER_OF_INVESTORS, "ExecutionPrice: maximum number of investors is too high.");
@@ -396,8 +396,8 @@ contract ExecutionPrice is IExecutionPrice {
 
     /* ========== MODIFIERS ========== */
 
-    modifier onlyPriceManager() {
-        require(msg.sender == priceManager, "ExecutionPrice: only the PriceManager contract can call this function.");
+    modifier onlyFactory() {
+        require(msg.sender == factory, "ExecutionPrice: only the ExecutionPriceFactory contract can call this function.");
         _;
     }
 

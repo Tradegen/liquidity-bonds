@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { parseEther } = require("@ethersproject/units");
-
+/*
 describe("ExecutionPrice", () => {
   let deployer;
   let otherUser;
@@ -137,7 +137,7 @@ describe("ExecutionPrice", () => {
     await executionPrice.deployed();
     executionPriceAddress = executionPrice.address;
   });
-  /*
+  
   describe("#updateTradingFee", () => {
     it("not owner", async () => {
         let tx = executionPrice.connect(otherUser).updateTradingFee(100)
@@ -268,7 +268,7 @@ describe("ExecutionPrice", () => {
         await tx.wait();
     });
 
-    it("not PriceManager", async () => {
+    it("not factory", async () => {
         let tx = executionPrice.connect(otherUser).updateContractOwner(pairDataAddress);
         await expect(tx).to.be.reverted;
 
@@ -2205,5 +2205,5 @@ describe("ExecutionPrice", () => {
         expect(order2.quantity).to.equal(parseEther("1"));
         expect(order2.amountFilled).to.equal(0);
     });
-  });*/
-});
+  });
+});*/

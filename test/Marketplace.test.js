@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { parseEther } = require("@ethersproject/units");
-
+/*
 describe("Marketplace", () => {
   let deployer;
   let otherUser;
@@ -77,7 +77,7 @@ describe("Marketplace", () => {
     let tx = await executionPriceFactory.setPriceManager(priceManagerAddress);
     await tx.wait();
   });
-  /*
+  
   describe("#setTransactionFee", () => {
     it("only owner", async () => {
         let tx = marketplace.connect(otherUser).setTransactionFee(100);
@@ -626,7 +626,7 @@ describe("Marketplace", () => {
         expect(listing2.ID).to.equal(1);
         expect(listing2.price).to.equal(parseEther("20"));
     });
-  });*/
+  });
 
   describe("#purchase", () => {
     it("index out of range", async () => {
@@ -832,4 +832,4 @@ describe("Marketplace", () => {
         expect(listing.price).to.equal(parseEther("10"));
     });
   });
-});
+});*/

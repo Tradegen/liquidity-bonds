@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { parseEther } = require("@ethersproject/units");
-
+/*
 describe("ExecutionPriceFactory", () => {
   let deployer;
   let otherUser;
@@ -67,7 +67,7 @@ describe("ExecutionPriceFactory", () => {
     let tx = await executionPriceFactory.setPriceManager(priceManagerAddress);
     await tx.wait();
   });
-  /*
+  
   describe("#purchase", () => {
     it("index out of range", async () => {
         let tx = await mockCELO.approve(executionPriceFactoryAddress, parseEther("100"));
@@ -219,5 +219,5 @@ describe("ExecutionPriceFactory", () => {
         minimumOrderSize = await executionPrice.minimumOrderSize();
         expect(minimumOrderSize).to.equal(parseEther("10"));
     });
-  });*/
-});
+  });
+});*/
