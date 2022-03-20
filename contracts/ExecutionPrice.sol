@@ -44,10 +44,21 @@ contract ExecutionPrice is IExecutionPrice {
 
     uint256 public startIndex = 1;
     uint256 public endIndex = 1;
-    bool public isBuyQueue;
+
+    // Number of tokens in the queue.
+    // When the queue is a 'buy queue', this represents 
     uint256 public numberOfTokensAvailable;
+
+    // Order index => order info.
     mapping(uint256 => Order) public orderBook;
+
+    // If a user's index is < startIndex, the order is considered filled.
     mapping(address => uint256) public orderIndex;
+
+    // Specifies whether the queue consists of orders to buy bond tokens or orders to sell bond tokens.
+    // If true, the queue will hold TGEN and executing an order will act as a 'sell' (users receive bond tokens).
+    // If false, the queue will hold bond tokens and executing an order will act as a 'buy' (users receive TGEN).
+    bool public isBuyQueue;
 
     bool internal initialized;
 
