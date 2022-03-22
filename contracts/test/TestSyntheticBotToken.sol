@@ -21,7 +21,7 @@ contract TestSyntheticBotToken is ERC1155 {
         _mint(msg.sender, _positionID, _amount, "");
     }
 
-    function getPosition(uint256 _positionID) external view returns (uint256, uint256, uint256, uint256, uint256, uint256) {
+    function getPosition(uint256) external view returns (uint256, uint256, uint256, uint256, uint256, uint256) {
         return (0, 0, rewardsEndOn, 0, 0, 0);
     }
 }

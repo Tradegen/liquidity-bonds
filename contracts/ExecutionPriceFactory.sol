@@ -25,20 +25,15 @@ contract ExecutionPriceFactory is IExecutionPriceFactory, Ownable {
 
     /* ========== STATE VARIABLES ========== */
 
-    address public immutable TGEN;
-    address public immutable xTGEN;
-    address public immutable marketplace;
-    address public immutable bondToken;
-    IPriceManager public priceManager;
+    address immutable TGEN;
+    address immutable xTGEN;
+    address immutable marketplace;
+    address immutable bondToken;
+    IPriceManager priceManager;
 
     /* ========== CONSTRUCTOR ========== */
 
     constructor(address _TGEN, address _xTGEN, address _marketplace, address _bondToken) Ownable() {
-        require(_TGEN != address(0), "PriceManager: invalid address for TGEN.");
-        require(_xTGEN != address(0), "PriceManager: invalid address for xTGEN.");
-        require(_marketplace != address(0), "PriceManager: invalid address for marketplace.");
-        require(_bondToken != address(0), "PriceManager: invalid address for bond token.");
-
         TGEN = _TGEN;
         xTGEN = _xTGEN;
         marketplace = _marketplace;
@@ -55,8 +50,7 @@ contract ExecutionPriceFactory is IExecutionPriceFactory, Ownable {
      * @param _minimumOrderSize minimum number of bond tokens per order.
      */
     function purchase(uint256 _index, uint256 _maximumNumberOfInvestors, uint256 _tradingFee, uint256 _minimumOrderSize) external priceManagerIsSet {
-        require(_index > 0, "PriceManager: index must be positive.");
-        require(_index <= MAX_INDEX, "PriceManager: index is too high.");
+        require(_index > 0 && _index <= MAX_INDEX, "PriceManager: index out of range.");
 
         uint256 price = priceManager.calculatePrice(_index);
 
@@ -81,8 +75,6 @@ contract ExecutionPriceFactory is IExecutionPriceFactory, Ownable {
      * @param _priceManager Address of the PriceManager contract.
      */
     function setPriceManager(address _priceManager) external onlyOwner priceManagerIsNotSet {
-        require(_priceManager != address(0), "ExecutionPriceFactory: invalid address for price manager.");
-
         priceManager = IPriceManager(_priceManager);
 
         emit SetPriceManager(_priceManager);
@@ -94,16 +86,13 @@ contract ExecutionPriceFactory is IExecutionPriceFactory, Ownable {
     * @param _executionPrice Address of the ExecutionPrice address.
     * @param _newOwner Address of the new owner for the ExecutionPrice contract.
     */
-    function updateContractOwner(address _executionPrice, address _newOwner) external override priceManagerIsSet onlyPriceManager {
+    function updateContractOwner(address _executionPrice, address _newOwner) external override priceManagerIsSet {
+        require(msg.sender == address(priceManager), "ExecutionPriceFactory: Only the PriceManager contract can call this function.");
+
         IExecutionPrice(_executionPrice).updateContractOwner(_newOwner);
     }
 
     /* ========== MODIFIERS ========== */
-
-    modifier onlyPriceManager() {
-        require(msg.sender == address(priceManager), "ExecutionPriceFactory: Only the PriceManager contract can call this function.");
-        _;
-    }
 
     modifier priceManagerIsNotSet() {
         require(address(priceManager) == address(0), "ExecutionPriceFactory: PriceManager contract is already set.");

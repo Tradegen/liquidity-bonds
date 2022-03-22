@@ -24,23 +24,27 @@ contract ExecutionPrice is IExecutionPrice {
         uint256 amountFilled;
     }
 
-    uint256 public constant MIN_MINIMUM_ORDER_VALUE = 1e18; // $1
-    uint256 public constant MAX_MINIMUM_ORDER_VALUE = 1e20; // $100
-    uint256 public constant MIN_MAXIMUM_NUMBER_OF_INVESTORS = 10;
-    uint256 public constant MAX_MAXIMUM_NUMBER_OF_INVESTORS = 50;
-    uint256 public constant MAX_TRADING_FEE = 300; // 3%, with 10000 as denominator
+    struct Params {
+        uint256 price; // Number of TGEN per bond token
+        uint256 maximumNumberOfInvestors;
+        uint256 tradingFee;
+        uint256 minimumOrderSize;
+        address owner;
+    }
 
-    IERC20 public immutable TGEN;
-    IERC20 public immutable bondToken;
-    address public factory;
-    address public immutable marketplace;
-    address public immutable xTGEN;
-    uint256 public price; // Number of TGEN per bond token
-    uint256 public maximumNumberOfInvestors = 20;
+    uint256 constant MIN_MINIMUM_ORDER_VALUE = 1e18; // $1
+    uint256 constant MAX_MINIMUM_ORDER_VALUE = 1e20; // $100
+    uint256 constant MIN_MAXIMUM_NUMBER_OF_INVESTORS = 10;
+    uint256 constant MAX_MAXIMUM_NUMBER_OF_INVESTORS = 50;
+    uint256 constant MAX_TRADING_FEE = 300; // 3%, with 10000 as denominator
 
-    address public owner;
-    uint256 public tradingFee = 50;
-    uint256 public minimumOrderSize = 1e16;
+    IERC20 immutable TGEN;
+    IERC20 immutable bondToken;
+    address factory;
+    address immutable marketplace;
+    address immutable xTGEN;
+
+    Params public params;
 
     uint256 public startIndex = 1;
     uint256 public endIndex = 1;
@@ -63,17 +67,20 @@ contract ExecutionPrice is IExecutionPrice {
     bool internal initialized;
 
     constructor(address _TGEN, address _bondToken, address _marketplace, address _xTGEN) {
-        require(_TGEN != address(0), "ExecutionPrice: invalid address for TGEN.");
-        require(_bondToken != address(0), "ExecutionPrice: invalid address for bond token.");
-        require(_marketplace != address(0), "ExecutionPrice: invalid address for Marketplace contract.");
-        require(_xTGEN != address(0), "ExecutionPrice: invalid address for xTGEN contract.");
-
         TGEN = IERC20(_TGEN);
         bondToken = IERC20(_bondToken);
         factory = msg.sender;
         marketplace = _marketplace;
         xTGEN = _xTGEN;
         isBuyQueue = true;
+
+        params = Params({
+            price: 1e18,
+            maximumNumberOfInvestors: 20,
+            tradingFee: 50,
+            minimumOrderSize: 1e16,
+            owner: address(0)
+        });
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
@@ -84,9 +91,9 @@ contract ExecutionPrice is IExecutionPrice {
      * @param _amount number of bond tokens to buy.
      */
     function buy(uint256 _amount) public override isInitialized {
-        require(_amount >= minimumOrderSize, "ExecutionPrice: amount must be above minimum order size.");
+        require(_amount >= params.minimumOrderSize, "ExecutionPrice: amount must be above minimum order size.");
 
-        TGEN.safeTransferFrom(msg.sender, address(this), _amount.mul(price).div(1e18));
+        TGEN.safeTransferFrom(msg.sender, address(this), _amount.mul(params.price).div(1e18));
 
         // Add order to queue or update existing order.
         if (isBuyQueue) {
@@ -97,7 +104,7 @@ contract ExecutionPrice is IExecutionPrice {
             }
             // Add order to queue.
             else {
-                require(endIndex.sub(startIndex) <= maximumNumberOfInvestors, "ExecutionPrice: queue is full.");
+                require(endIndex.sub(startIndex) <= params.maximumNumberOfInvestors, "ExecutionPrice: queue is full.");
                 _append(msg.sender, _amount);
             }
 
@@ -126,7 +133,7 @@ contract ExecutionPrice is IExecutionPrice {
      * @param _amount number of bond tokens to sell.
      */
     function sell(uint256 _amount) public override isInitialized {
-        require(_amount >= minimumOrderSize, "ExecutionPrice: amount must be above minimum order size.");
+        require(_amount >= params.minimumOrderSize, "ExecutionPrice: amount must be above minimum order size.");
 
         bondToken.safeTransferFrom(msg.sender, address(this), _amount);
 
@@ -154,7 +161,7 @@ contract ExecutionPrice is IExecutionPrice {
             }
             // Add order to queue.
             else {
-                require(endIndex.sub(startIndex) <= maximumNumberOfInvestors, "ExecutionPrice: queue is full.");
+                require(endIndex.sub(startIndex) <= params.maximumNumberOfInvestors, "ExecutionPrice: queue is full.");
                 _append(msg.sender, _amount);
             }
 
@@ -170,7 +177,7 @@ contract ExecutionPrice is IExecutionPrice {
      * @param _buy whether this is a 'buy' order.
      */
     function updateOrder(uint256 _amount, bool _buy) external override isInitialized {
-        require(_amount >= minimumOrderSize, "ExecutionPrice: amount must be above minimum order size.");
+        require(_amount >= params.minimumOrderSize, "ExecutionPrice: amount must be above minimum order size.");
 
         // User's previous order is filled, so treat this as a new order.
         if (orderIndex[msg.sender] < startIndex) {
@@ -196,7 +203,7 @@ contract ExecutionPrice is IExecutionPrice {
                 numberOfTokensAvailable = numberOfTokensAvailable.sub(orderBook[orderIndex[msg.sender]].quantity.sub(_amount));
 
                 if (_buy) {
-                    TGEN.transfer(msg.sender, (orderBook[orderIndex[msg.sender]].quantity.sub(_amount)).mul(price).div(1e18));
+                    TGEN.transfer(msg.sender, (orderBook[orderIndex[msg.sender]].quantity.sub(_amount)).mul(params.price).div(1e18));
                 }
                 else {
                     bondToken.transfer(msg.sender, orderBook[orderIndex[msg.sender]].quantity.sub(_amount));
@@ -211,7 +218,7 @@ contract ExecutionPrice is IExecutionPrice {
                 numberOfTokensAvailable = numberOfTokensAvailable.add(_amount).sub(orderBook[orderIndex[msg.sender]].quantity);
 
                 if (_buy) {
-                    TGEN.safeTransferFrom(msg.sender, address(this), (_amount.sub(orderBook[orderIndex[msg.sender]].quantity)).mul(price).div(1e18));
+                    TGEN.safeTransferFrom(msg.sender, address(this), (_amount.sub(orderBook[orderIndex[msg.sender]].quantity)).mul(params.price).div(1e18));
                 }
                 else {
                     bondToken.safeTransferFrom(msg.sender, address(this), _amount.sub(orderBook[orderIndex[msg.sender]].quantity));
@@ -295,10 +302,10 @@ contract ExecutionPrice is IExecutionPrice {
             orderBook[start].amountFilled = orderBook[start].amountFilled.add(filledAmount);
 
             if (isBuyQueue) {
-                bondToken.transfer(orderBook[start].user, filledAmount.mul(10000 - tradingFee).div(10000));
+                bondToken.transfer(orderBook[start].user, filledAmount.mul(10000 - params.tradingFee).div(10000));
             }
             else {
-                TGEN.transfer(orderBook[start].user, filledAmount.mul(price).mul(10000 - tradingFee).div(1e18).div(10000));
+                TGEN.transfer(orderBook[start].user, filledAmount.mul(params.price).mul(10000 - params.tradingFee).div(1e18).div(10000));
             }
 
             // Exit early when order is filled.
@@ -319,10 +326,10 @@ contract ExecutionPrice is IExecutionPrice {
         // If owner is the marketplace contract (NFT held in escrow while listed for sale), transfer TGEN to xTGEN contract
         // and burn bond tokens.
         if (isBuyQueue) {
-            bondToken.transfer((owner == marketplace) ? address(0) : owner, totalFilledAmount.mul(tradingFee).div(10000));
+            bondToken.transfer((params.owner == marketplace) ? address(0) : params.owner, totalFilledAmount.mul(params.tradingFee).div(10000));
         }
         else {
-            TGEN.transfer((owner == marketplace) ? xTGEN : owner, totalFilledAmount.mul(price).mul(tradingFee).div(1e18).div(10000));
+            TGEN.transfer((params.owner == marketplace) ? xTGEN : params.owner, totalFilledAmount.mul(params.price).mul(params.tradingFee).div(1e18).div(10000));
         }
 
         numberOfTokensAvailable = numberOfTokensAvailable.sub(totalFilledAmount);
@@ -339,10 +346,9 @@ contract ExecutionPrice is IExecutionPrice {
      * @param _newFee the new trading fee.
      */
     function updateTradingFee(uint256 _newFee) external override onlyOwner isInitialized {
-        require(_newFee >= 0, "ExecutionPrice: trading fee must be positive.");
-        require(_newFee <= MAX_TRADING_FEE, "ExecutionPrice: trading fee is too high.");
+        require(_newFee >= 0 && _newFee <= MAX_TRADING_FEE, "ExecutionPrice: trading fee out of range.");
 
-        tradingFee = _newFee;
+        params.tradingFee = _newFee;
 
         emit UpdatedTradingFee(_newFee);
     }
@@ -353,10 +359,10 @@ contract ExecutionPrice is IExecutionPrice {
      * @param _newSize the new minimum order size.
      */
     function updateMinimumOrderSize(uint256 _newSize) external override onlyOwner isInitialized {
-        require(_newSize.mul(price).div(1e18) >= MIN_MINIMUM_ORDER_VALUE, "ExecutionPrice: minimum order size is too low.");
-        require(_newSize.mul(price).div(1e18) <= MAX_MINIMUM_ORDER_VALUE, "ExecutionPrice: minimum order size is too high.");
+        require(_newSize.mul(params.price).div(1e18) >= MIN_MINIMUM_ORDER_VALUE, "ExecutionPrice: minimum order size is too low.");
+        require(_newSize.mul(params.price).div(1e18) <= MAX_MINIMUM_ORDER_VALUE, "ExecutionPrice: minimum order size is too high.");
 
-        minimumOrderSize = _newSize;
+        params.minimumOrderSize = _newSize;
 
         emit UpdatedMinimumOrderSize(_newSize);
     }
@@ -368,10 +374,9 @@ contract ExecutionPrice is IExecutionPrice {
      * @param _newOwner the new contract owner.
      */
     function updateContractOwner(address _newOwner) external override onlyFactory isInitialized {
-        require(_newOwner != address(0), "ExecutionPrice: invalid address for new owner.");
-        require(_newOwner != owner, "ExecutionPrice: owner is the same.");
+        require(_newOwner != address(0) && _newOwner != params.owner, "ExecutionPrice: invalid address for new owner.");
 
-        owner = _newOwner;
+        params.owner = _newOwner;
 
         emit UpdatedOwner(_newOwner);
     }
@@ -386,20 +391,20 @@ contract ExecutionPrice is IExecutionPrice {
      * @param _owner address of the contract owner.
      */
     function initialize(uint256 _price, uint256 _maximumNumberOfInvestors, uint256 _tradingFee, uint256 _minimumOrderSize, address _owner) external override onlyFactory isNotInitialized {
-        require(_price > 0, "ExecutionPrice: price must be positive.");
         require(_maximumNumberOfInvestors >= MIN_MAXIMUM_NUMBER_OF_INVESTORS, "ExecutionPrice: maximum number of investors is too low.");
         require(_maximumNumberOfInvestors <= MAX_MAXIMUM_NUMBER_OF_INVESTORS, "ExecutionPrice: maximum number of investors is too high.");
-        require(_tradingFee >= 0, "ExecutionPrice: trading fee must be positive.");
-        require(_tradingFee <= MAX_TRADING_FEE, "ExecutionPrice: trading fee is too high.");
+        require(_tradingFee >= 0 && _tradingFee <= MAX_TRADING_FEE, "ExecutionPrice: trading fee out of range.");
         require(_minimumOrderSize.mul(_price).div(1e18) >= MIN_MINIMUM_ORDER_VALUE, "ExecutionPrice: minimum order size is too low.");
         require(_minimumOrderSize.mul(_price).div(1e18) <= MAX_MINIMUM_ORDER_VALUE, "ExecutionPrice: minimum order size is too high.");
-        require(_owner != address(0), "ExecutionPrice: invalid address for owner.");
 
-        price = _price;
-        maximumNumberOfInvestors = _maximumNumberOfInvestors;
-        tradingFee = _tradingFee;
-        minimumOrderSize = _minimumOrderSize;
-        owner = _owner;
+        params = Params({
+            price: _price,
+            maximumNumberOfInvestors: _maximumNumberOfInvestors,
+            tradingFee: _tradingFee,
+            minimumOrderSize: _minimumOrderSize,
+            owner: _owner
+        });
+
         initialized = true;
 
         emit InitializedContract(_price, _maximumNumberOfInvestors, _tradingFee, _minimumOrderSize, _owner);
@@ -413,7 +418,7 @@ contract ExecutionPrice is IExecutionPrice {
     }
 
     modifier onlyOwner() {
-        require(msg.sender == owner, "ExecutionPrice: only the contract owner can call this function.");
+        require(msg.sender == params.owner, "ExecutionPrice: only the contract owner can call this function.");
         _;
     }
 
