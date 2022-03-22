@@ -8,6 +8,8 @@ import "./openzeppelin-solidity/contracts/ReentrancyGuard.sol";
 import "./openzeppelin-solidity/contracts/Ownable.sol";
 import "./openzeppelin-solidity/contracts/ERC20/SafeERC20.sol";
 import "./openzeppelin-solidity/contracts/ERC20/ERC20.sol";
+import "./openzeppelin-solidity/contracts/ERC1155/IERC1155.sol";
+import "./openzeppelin-solidity/contracts/ERC1155/ERC1155Holder.sol";
 
 // Inheritance
 import "./interfaces/ILiquidityBond.sol";
@@ -16,10 +18,11 @@ import "./interfaces/ILiquidityBond.sol";
 import "./interfaces/IReleaseEscrow.sol";
 import "./interfaces/IPriceCalculator.sol";
 import "./interfaces/IRouter.sol";
+import "./interfaces/ISyntheticBotToken.sol";
 import "./interfaces/IUniswapV2Pair.sol";
 import './interfaces/IUniswapV2Router02.sol';
 
-contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
+contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20, ERC1155Holder {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -50,7 +53,13 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
 
     /* ========== CONSTRUCTOR ========== */
 
-    constructor(address _rewardsToken, address _collateralTokenAddress, address _lpPair, address _priceCalculatorAddress, address _routerAddress, address _ubeswapRouterAddress, address _xTGEN) ERC20("LiquidityBond", "LB") {
+    constructor(address _rewardsToken,
+                address _collateralTokenAddress,
+                address _lpPair, address _priceCalculatorAddress,
+                address _routerAddress, address _ubeswapRouterAddress,
+                address _xTGEN)
+                ERC20("LiquidityBond", "LB")
+    {
         rewardsToken = IERC20(_rewardsToken);
         collateralToken = IERC20(_collateralTokenAddress);
         lpPair = IUniswapV2Pair(_lpPair);
@@ -86,6 +95,30 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
+
+    /**
+     * @dev Converts synthetic trading bot tokens to liquidity bond tokens.
+     * @notice Bot tokens can only be converted when the reward period finishes.
+     * @notice Does not affect bond token price or staked amount for current period.
+     * @param _botToken Address of the synthetic trading bot token.
+     * @param _positionID NFT ID.
+     * @param _numberOfTokens Number of bot tokens to convert.
+     */
+    function convertBotTokens(address _botToken, uint256 _positionID, uint256 _numberOfTokens) external {
+        (,,uint256 rewardsEndOn,,,) = ISyntheticBotToken(_botToken).getPosition(_positionID);
+        require(block.timestamp >= rewardsEndOn, "LiquidityBond: rewards must finish before converting tokens.");
+
+        // Transfer bot tokens to this contract, effectively burning them.
+        IERC1155(_botToken).safeTransferFrom(msg.sender, address(this), _positionID, _numberOfTokens, "");
+
+        uint256 dollarValue = ISyntheticBotToken(_botToken).getTokenPrice().mul(_numberOfTokens).div(1e18);
+        uint256 numberOfBondTokens = dollarValue.mul(10 ** 18).div(bondTokenPrice);
+        
+        // Increase total supply and transfer bond tokens to buyer.
+        _mint(msg.sender, numberOfBondTokens);
+
+        emit ConvertedBotTokens(_botToken, _positionID, _numberOfTokens, numberOfBondTokens);
+    }
 
     /**
      * @dev Purchases liquidity bonds.
@@ -142,7 +175,7 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
      *
      * To learn more about hooks, head to xref:ROOT:extending-contracts.adoc#using-hooks[Using Hooks].
      */
-    function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual override {
+    function _beforeTokenTransfer(address from, address to, uint256) internal virtual override {
         if (from != address(0) && to != address(0)) {
             _getReward();
 
@@ -280,6 +313,7 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
 
     /* ========== EVENTS ========== */
 
+    event ConvertedBotTokens(address botToken, uint256 positionID, uint256 numberOfBotTokensConverted, uint256 numberOfBondTokensReceived);
     event RewardAdded(uint256 reward);
     event Purchased(address indexed user, uint256 amountDeposited, uint256 numberOfBondTokensReceived, uint256 bonus);
     event RewardPaid(address indexed user, uint256 reward);

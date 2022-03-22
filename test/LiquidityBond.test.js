@@ -43,6 +43,10 @@ describe("LiquidityBond", () => {
   let releaseEscrowAddress;
   let ReleaseEscrowFactory;
 
+  let botToken;
+  let botTokenAddress;
+  let BotTokenFactory;
+
   let liquidityBond;
   let liquidityBondAddress;
   let LiquidityBondFactory;
@@ -64,6 +68,7 @@ describe("LiquidityBond", () => {
     PriceCalculatorFactory = await ethers.getContractFactory('TestPriceCalculator');
     ReleaseScheduleFactory = await ethers.getContractFactory('TestReleaseSchedule');
     ReleaseEscrowFactory = await ethers.getContractFactory('ReleaseEscrow');
+    BotTokenFactory = await ethers.getContractFactory('TestSyntheticBotToken');
     LiquidityBondFactory = await ethers.getContractFactory('TestLiquidityBond');
 
     tradegenToken = await TestTokenFactory.deploy("Test TGEN", "TGEN");
@@ -109,6 +114,10 @@ describe("LiquidityBond", () => {
     router = await RouterFactory.deploy(pathManagerAddress, ubeswapRouterAddress, tradegenTokenAddress);
     await router.deployed();
     routerAddress = router.address;
+
+    botToken = await BotTokenFactory.deploy();
+    await botToken.deployed();
+    botTokenAddress = botToken.address;
 
     let currentTime = await pairData.getCurrentTime();
 
@@ -1108,4 +1117,81 @@ describe("LiquidityBond", () => {
       expect(bondTokenBalanceOther).to.equal(parseEther("1500"));
     });
   });*/
+
+  describe("#convertBotTokens", () => { 
+    it("bot rewards have not ended", async () => {
+      let currentTime = await pairData.getCurrentTime();
+
+      releaseSchedule = await ReleaseScheduleFactory.deploy(parseEther("1000"), currentTime);
+      await releaseSchedule.deployed();
+      releaseScheduleAddress = releaseSchedule.address;
+
+      releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, tradegenTokenAddress, releaseScheduleAddress);
+      await releaseEscrow.deployed();
+      releaseEscrowAddress = releaseEscrow.address;
+
+      let tx = await tradegenToken.transfer(releaseEscrowAddress, parseEther("1000"));
+      await tx.wait();
+
+      let tx2 = await liquidityBond.setReleaseEscrow(releaseEscrowAddress);
+      await tx2.wait();
+
+      let tx3 = await botToken.setRewardsEndOn(Number(currentTime) + 100);
+      await tx3.wait();
+
+      let tx4 = await botToken.testMint(1, parseEther("1"));
+      await tx4.wait();
+
+      let tx5 = await botToken.setApprovalForAll(liquidityBondAddress, true);
+      await tx5.wait();
+
+      let tx6 = liquidityBond.convertBotTokens(botTokenAddress, 1, parseEther("1"));
+      await expect(tx6).to.be.reverted;
+
+      let totalSupply = await liquidityBond.totalSupply();
+      expect(totalSupply).to.equal(0);
+
+      let balance = await botToken.balanceOf(deployer.address, 1);
+      expect(balance).to.equal(parseEther("1"));
+    });
+
+    it("meets requirements", async () => {
+      let currentTime = await pairData.getCurrentTime();
+
+      releaseSchedule = await ReleaseScheduleFactory.deploy(parseEther("1000"), currentTime);
+      await releaseSchedule.deployed();
+      releaseScheduleAddress = releaseSchedule.address;
+
+      releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, tradegenTokenAddress, releaseScheduleAddress);
+      await releaseEscrow.deployed();
+      releaseEscrowAddress = releaseEscrow.address;
+
+      let tx = await tradegenToken.transfer(releaseEscrowAddress, parseEther("1000"));
+      await tx.wait();
+
+      let tx2 = await liquidityBond.setReleaseEscrow(releaseEscrowAddress);
+      await tx2.wait();
+
+      let tx3 = await botToken.setRewardsEndOn(Number(currentTime) - 100);
+      await tx3.wait();
+
+      let tx4 = await botToken.testMint(1, parseEther("1"));
+      await tx4.wait();
+
+      let tx5 = await botToken.setApprovalForAll(liquidityBondAddress, true);
+      await tx5.wait();
+
+      let tx6 = await liquidityBond.convertBotTokens(botTokenAddress, 1, parseEther("1"));
+      await tx6.wait();
+
+      let totalSupply = await liquidityBond.totalSupply();
+      expect(totalSupply).to.equal(parseEther("5"));
+
+      let balanceUser = await botToken.balanceOf(deployer.address, 1);
+      expect(balanceUser).to.equal(0);
+
+      let balanceContract = await botToken.balanceOf(liquidityBondAddress, 1);
+      expect(balanceContract).to.equal(parseEther("1"));
+    });
+  });
 });
