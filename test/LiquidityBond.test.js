@@ -1116,7 +1116,7 @@ describe("LiquidityBond", () => {
       let bondTokenBalanceOther = await liquidityBond.balanceOf(otherUser.address);
       expect(bondTokenBalanceOther).to.equal(parseEther("1500"));
     });
-  });*/
+  });
 
   describe("#convertBotTokens", () => { 
     it("bot rewards have not ended", async () => {
@@ -1193,5 +1193,5 @@ describe("LiquidityBond", () => {
       let balanceContract = await botToken.balanceOf(liquidityBondAddress, 1);
       expect(balanceContract).to.equal(parseEther("1"));
     });
-  });
+  });*/
 });

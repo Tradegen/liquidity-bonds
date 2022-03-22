@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { parseEther } = require("@ethersproject/units");
-/*
+
 describe("ExecutionPrice", () => {
   let deployer;
   let otherUser;
@@ -143,8 +143,8 @@ describe("ExecutionPrice", () => {
         let tx = executionPrice.connect(otherUser).updateTradingFee(100)
         await expect(tx).to.be.reverted;
 
-        let fee = await executionPrice.tradingFee();
-        expect(fee).to.equal(50);
+        let params = await executionPrice.params();
+        expect(params.tradingFee).to.equal(50);
     });
 
     it("not initialized", async () => {
@@ -154,8 +154,8 @@ describe("ExecutionPrice", () => {
         let tx2 = executionPrice.updateTradingFee(100)
         await expect(tx2).to.be.reverted;
 
-        let fee = await executionPrice.tradingFee();
-        expect(fee).to.equal(50);
+        let params = await executionPrice.params();
+        expect(params.tradingFee).to.equal(50);
     });
 
     it("> max trading fee", async () => {
@@ -168,8 +168,8 @@ describe("ExecutionPrice", () => {
         let tx3 = executionPrice.updateTradingFee(2000)
         await expect(tx3).to.be.reverted;
 
-        let fee = await executionPrice.tradingFee();
-        expect(fee).to.equal(50);
+        let params = await executionPrice.params();
+        expect(params.tradingFee).to.equal(50);
     });
 
     it("meets requirements", async () => {
@@ -182,8 +182,8 @@ describe("ExecutionPrice", () => {
         let tx3 = await executionPrice.updateTradingFee(100)
         await tx3.wait();
 
-        let fee = await executionPrice.tradingFee();
-        expect(fee).to.equal(100);
+        let params = await executionPrice.params();
+        expect(params.tradingFee).to.equal(100);
     });
   });
 
@@ -195,8 +195,8 @@ describe("ExecutionPrice", () => {
         let tx2 = executionPrice.connect(otherUser).updateMinimumOrderSize(parseEther("2"));
         await expect(tx2).to.be.reverted;
 
-        let size = await executionPrice.minimumOrderSize();
-        expect(size).to.equal(parseEther("0.01"));
+        let params = await executionPrice.params();
+        expect(params.minimumOrderSize).to.equal(parseEther("0.01"));
     });
 
     it("not initialized", async () => {
@@ -206,8 +206,8 @@ describe("ExecutionPrice", () => {
         let tx2 = executionPrice.updateMinimumOrderSize(parseEther("2"));
         await expect(tx2).to.be.reverted;
 
-        let size = await executionPrice.minimumOrderSize();
-        expect(size).to.equal(parseEther("0.01"));
+        let params = await executionPrice.params();
+        expect(params.minimumOrderSize).to.equal(parseEther("0.01"));
     });
 
     it("< min order value", async () => {
@@ -223,8 +223,8 @@ describe("ExecutionPrice", () => {
         let tx4 = executionPrice.updateMinimumOrderSize(parseEther("0.05"));
         await expect(tx4).to.be.reverted;
 
-        let size = await executionPrice.minimumOrderSize();
-        expect(size).to.equal(parseEther("0.01"));
+        let params = await executionPrice.params();
+        expect(params.minimumOrderSize).to.equal(parseEther("0.01"));
     });
 
     it("> max order value", async () => {
@@ -240,8 +240,8 @@ describe("ExecutionPrice", () => {
         let tx4 = executionPrice.updateMinimumOrderSize(parseEther("1500"));
         await expect(tx4).to.be.reverted;
 
-        let size = await executionPrice.minimumOrderSize();
-        expect(size).to.equal(parseEther("0.01"));
+        let params = await executionPrice.params();
+        expect(params.minimumOrderSize).to.equal(parseEther("0.01"));
     });
 
     it("meets requirements", async () => {
@@ -257,8 +257,8 @@ describe("ExecutionPrice", () => {
         let tx4 = await executionPrice.updateMinimumOrderSize(parseEther("10"));
         await tx4.wait();
 
-        let size = await executionPrice.minimumOrderSize();
-        expect(size).to.equal(parseEther("10"));
+        let params = await executionPrice.params();
+        expect(params.minimumOrderSize).to.equal(parseEther("10"));
     });
   });
 
@@ -272,16 +272,16 @@ describe("ExecutionPrice", () => {
         let tx = executionPrice.connect(otherUser).updateContractOwner(pairDataAddress);
         await expect(tx).to.be.reverted;
 
-        let owner = await executionPrice.owner();
-        expect(owner).to.equal(deployer.address);
+        let params = await executionPrice.params();
+        expect(params.owner).to.equal(deployer.address);
     });
 
     it("not initialized", async () => {
         let tx = executionPrice.updateContractOwner(pairDataAddress);
         await expect(tx).to.be.reverted;
 
-        let owner = await executionPrice.owner();
-        expect(owner).to.equal(deployer.address);
+        let params = await executionPrice.params();
+        expect(params.owner).to.equal(deployer.address);
     });
 
     it("owner is the same", async () => {
@@ -291,8 +291,8 @@ describe("ExecutionPrice", () => {
         let tx2 = executionPrice.updateContractOwner(deployer.address);
         await expect(tx2).to.be.reverted;
 
-        let owner = await executionPrice.owner();
-        expect(owner).to.equal(deployer.address);
+        let params = await executionPrice.params();
+        expect(params.owner).to.equal(deployer.address);
     });
 
     it("meets requirements", async () => {
@@ -302,8 +302,8 @@ describe("ExecutionPrice", () => {
         let tx2 = await executionPrice.updateContractOwner(pairDataAddress);
         await tx2.wait();
 
-        let owner = await executionPrice.owner();
-        expect(owner).to.equal(pairDataAddress);
+        let params = await executionPrice.params();
+        expect(params.owner).to.equal(pairDataAddress);
     });
   });
 
@@ -2206,4 +2206,4 @@ describe("ExecutionPrice", () => {
         expect(order2.amountFilled).to.equal(0);
     });
   });
-});*/
+});

@@ -113,20 +113,12 @@ describe("ExecutionPriceFactory", () => {
         let deployedAddress = executionPriceInfo.contractAddress;
         executionPrice = ExecutionPriceFactory.attach(deployedAddress);
 
-        let price = await executionPrice.price();
-        expect(price).to.equal(parseEther("1.1046"));
-
-        let maximumNumberOfInvestors = await executionPrice.maximumNumberOfInvestors();
-        expect(maximumNumberOfInvestors).to.equal(20);
-
-        let owner = await executionPrice.owner();
-        expect(owner).to.equal(deployer.address);
-
-        let tradingFee = await executionPrice.tradingFee();
-        expect(tradingFee).to.equal(100);
-
-        let minimumOrderSize = await executionPrice.minimumOrderSize();
-        expect(minimumOrderSize).to.equal(parseEther("50"));
+        let params = await executionPrice.params();
+        expect(params.price).to.equal(parseEther("1.1046"));
+        expect(params.maximumNumberOfInvestors).to.equal(20);
+        expect(params.owner).to.equal(deployer.address);
+        expect(params.tradingFee).to.equal(100);
+        expect(params.minimumOrderSize).to.equal(parseEther("50"));
     });
 
     it("already minted", async () => {
@@ -186,38 +178,22 @@ describe("ExecutionPriceFactory", () => {
         let deployedAddress1 = executionPriceInfo11.contractAddress;
         executionPrice = ExecutionPriceFactory.attach(deployedAddress1);
 
-        let price = await executionPrice.price();
-        expect(price).to.equal(parseEther("1.1046"));
-
-        let maximumNumberOfInvestors = await executionPrice.maximumNumberOfInvestors();
-        expect(maximumNumberOfInvestors).to.equal(20);
-
-        let owner = await executionPrice.owner();
-        expect(owner).to.equal(deployer.address);
-
-        let tradingFee = await executionPrice.tradingFee();
-        expect(tradingFee).to.equal(100);
-
-        let minimumOrderSize = await executionPrice.minimumOrderSize();
-        expect(minimumOrderSize).to.equal(parseEther("50"));
+        let params = await executionPrice.params();
+        expect(params.price).to.equal(parseEther("1.1046"));
+        expect(params.maximumNumberOfInvestors).to.equal(20);
+        expect(params.owner).to.equal(deployer.address);
+        expect(params.tradingFee).to.equal(100);
+        expect(params.minimumOrderSize).to.equal(parseEther("50"));
 
         let deployedAddress2 = executionPriceInfo1.contractAddress;
         executionPrice = ExecutionPriceFactory.attach(deployedAddress2);
 
-        price = await executionPrice.price();
-        expect(price).to.equal(parseEther("1"));
-
-        maximumNumberOfInvestors = await executionPrice.maximumNumberOfInvestors();
-        expect(maximumNumberOfInvestors).to.equal(25);
-
-        owner = await executionPrice.owner();
-        expect(owner).to.equal(deployer.address);
-
-        tradingFee = await executionPrice.tradingFee();
-        expect(tradingFee).to.equal(120);
-
-        minimumOrderSize = await executionPrice.minimumOrderSize();
-        expect(minimumOrderSize).to.equal(parseEther("10"));
+        let params2 = await executionPrice.params();
+        expect(params2.price).to.equal(parseEther("1"));
+        expect(params2.maximumNumberOfInvestors).to.equal(25);
+        expect(params2.owner).to.equal(deployer.address);
+        expect(params2.tradingFee).to.equal(120);
+        expect(params2.minimumOrderSize).to.equal(parseEther("10"));
     });
   });
 });*/
