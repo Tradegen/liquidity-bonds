@@ -2,11 +2,16 @@
 
 pragma solidity ^0.8.3;
 
+// Openzeppelin
 import "./openzeppelin-solidity/contracts/ERC20/SafeERC20.sol";
 import "./openzeppelin-solidity/contracts/SafeMath.sol";
 import "./openzeppelin-solidity/contracts/ReentrancyGuard.sol";
 
+// Interfaces
 import "./interfaces/IReleaseSchedule.sol";
+import "./interfaces/IBackupMode.sol";
+
+// Inheritance
 import "./interfaces/IReleaseEscrow.sol";
 
 /**
@@ -24,11 +29,18 @@ contract ReleaseEscrow is ReentrancyGuard, IReleaseEscrow {
     // Reward token contract address.
     IERC20 public immutable rewardToken;
 
-    // Where the funds go to.
+    // LiquidityBond contract.
     address public immutable beneficiary;
+
+    // StakingRewards contract.
+    address public immutable backupBeneficiary;
 
     // Schedule for release of tokens.
     IReleaseSchedule public immutable schedule;
+
+    // Keep track of whether the protocol is in backup mode.
+    // Rewards go to StakingRewards contract during backup mode.
+    IBackupMode public backupMode;
 
     // Timestamp of the last withdrawal.
     uint256 public lastWithdrawalTime;
@@ -41,13 +53,15 @@ contract ReleaseEscrow is ReentrancyGuard, IReleaseEscrow {
 
     /* ========== CONSTRUCTOR ========== */
 
-    constructor(address beneficiary_, address rewardToken_, address schedule_) {
-        beneficiary = beneficiary_;
-        rewardToken = IERC20(rewardToken_);
-        schedule = IReleaseSchedule(schedule_);
-        startTime = IReleaseSchedule(schedule_).distributionStartTime();
-        lastWithdrawalTime = IReleaseSchedule(schedule_).getStartOfCurrentCycle();
-        lifetimeRewards = IReleaseSchedule(schedule_).getTokensForCycle(1).mul(2);
+    constructor(address _liquidityBond, address _stakingRewards, address _rewardToken, address _schedule, address _backupMode) {
+        beneficiary = _liquidityBond;
+        backupBeneficiary = _stakingRewards;
+        rewardToken = IERC20(_rewardToken);
+        schedule = IReleaseSchedule(_schedule);
+        backupMode = IBackupMode(_backupMode);
+        startTime = IReleaseSchedule(_schedule).distributionStartTime();
+        lastWithdrawalTime = IReleaseSchedule(_schedule).getStartOfCurrentCycle();
+        lifetimeRewards = IReleaseSchedule(_schedule).getTokensForCycle(1).mul(2);
     }
 
     /* ========== VIEWS ========== */
@@ -102,7 +116,7 @@ contract ReleaseEscrow is ReentrancyGuard, IReleaseEscrow {
         
         lastWithdrawalTime = block.timestamp;
         distributedRewards = distributedRewards.add(availableTokens);
-        rewardToken.safeTransfer(beneficiary, availableTokens);
+        rewardToken.safeTransfer(backupMode.useBackup() ? backupBeneficiary : beneficiary, availableTokens);
 
         return availableTokens;
     }
@@ -115,7 +129,9 @@ contract ReleaseEscrow is ReentrancyGuard, IReleaseEscrow {
     }
 
     modifier onlyBeneficiary {
-        require(msg.sender == beneficiary, "ReleaseEscrow: only the beneficiary can call this function");
+        require((msg.sender == beneficiary && !backupMode.useBackup()) ||
+                (msg.sender == backupBeneficiary && backupMode.useBackup()),
+                "ReleaseEscrow: only the beneficiary can call this function");
         _;
     }
 }
