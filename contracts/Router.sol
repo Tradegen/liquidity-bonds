@@ -22,20 +22,17 @@ contract Router is IRouter {
     IUniswapV2Router02 public immutable ubeswapRouter;
     IUniswapV2Factory public immutable ubeswapFactory;
     IERC20 public immutable TGEN;
-    IBackupMode public backupMode;
 
-    constructor(address _ubeswapPathManagerAddress, address _ubeswapRouter, address _ubeswapFactory, address _TGEN, address _backupMode) {
+    constructor(address _ubeswapPathManagerAddress, address _ubeswapRouter, address _ubeswapFactory, address _TGEN) {
         require(_ubeswapPathManagerAddress != address(0), "Router: invalid address for UbeswapPathManager.");
         require(_ubeswapRouter != address(0), "Router: invalid address for Ubeswap router.");
         require(_ubeswapFactory != address(0), "Router: invalid address for Ubeswap factory.");
         require(_TGEN != address(0), "Router: invalid address for TGEN.");
-        require(_backupMode != address(0), "Router: invalid address for BackupMode contract.");
 
         pathManager = IUbeswapPathManager(_ubeswapPathManagerAddress);
         ubeswapRouter = IUniswapV2Router02(_ubeswapRouter);
         ubeswapFactory = IUniswapV2Factory(_ubeswapFactory);
         TGEN = IERC20(_TGEN);
-        backupMode = IBackupMode(_backupMode);
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
@@ -121,7 +118,7 @@ contract Router is IRouter {
     * @param _numberOfLPTokens Number of LP tokens to remove.
     * @return (uint256, uint256) Amount of token0 received, and amount of token1 received.
     */
-    function removeLiquidity(address _asset, uint256 _numberOfLPTokens) external override inBackupMode returns (uint256, uint256) {
+    function removeLiquidity(address _asset, uint256 _numberOfLPTokens) external override returns (uint256, uint256) {
         require(_asset != address(0), "Router: invalid asset address.");
         require(_numberOfLPTokens > 0, "Router: number of LP tokens must be positive.");
 
@@ -135,13 +132,6 @@ contract Router is IRouter {
         emit RemovedLiquidity(_asset, _numberOfLPTokens, amountA, amountB);
 
         return (amountA, amountB);
-    }
-
-    /* ========== MODIFIERS ========== */
-
-    modifier inBackupMode() {
-        require(backupMode.useBackup(), "Router: Backup mode must be on.");
-        _;
     }
 
     /* ========== EVENTS ========== */

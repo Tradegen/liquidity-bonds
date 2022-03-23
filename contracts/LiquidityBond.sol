@@ -8,8 +8,6 @@ import "./openzeppelin-solidity/contracts/ReentrancyGuard.sol";
 import "./openzeppelin-solidity/contracts/Ownable.sol";
 import "./openzeppelin-solidity/contracts/ERC20/SafeERC20.sol";
 import "./openzeppelin-solidity/contracts/ERC20/ERC20.sol";
-import "./openzeppelin-solidity/contracts/ERC1155/IERC1155.sol";
-import "./openzeppelin-solidity/contracts/ERC1155/ERC1155Holder.sol";
 
 // Inheritance
 import "./interfaces/ILiquidityBond.sol";
@@ -18,11 +16,11 @@ import "./interfaces/ILiquidityBond.sol";
 import "./interfaces/IReleaseEscrow.sol";
 import "./interfaces/IPriceCalculator.sol";
 import "./interfaces/IRouter.sol";
-import "./interfaces/ISyntheticBotToken.sol";
 import "./interfaces/IUniswapV2Pair.sol";
 import './interfaces/IUniswapV2Router02.sol';
+import "./interfaces/IBackupMode.sol";
 
-contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20, ERC1155Holder {
+contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -39,6 +37,7 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20, ERC11
     IPriceCalculator public immutable priceCalculator;
     IRouter public immutable router;
     IUniswapV2Router02 public immutable ubeswapRouter;
+    IBackupMode public backupMode;
     address public immutable xTGEN;
     
     uint256 public totalAvailableRewards;
@@ -46,6 +45,12 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20, ERC11
     uint256 public rewardPerTokenStored;
     uint256 public bondTokenPrice = 1e18; // Price of 1 bond token in USD
     uint256 public startTime;
+
+    uint256 public totalLPTokens;
+    mapping(address => uint256) public userLPTokens;
+
+    // Keeps track of whether a user has migrated their bond tokens to the StakingRewards contract.
+    mapping(address => bool) public hasMigrated;
 
     mapping(uint256 => uint256) public stakedAmounts; // Period index => amount of CELO staked
     mapping(address => uint256) public userRewardPerTokenPaid;
@@ -57,7 +62,8 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20, ERC11
                 address _collateralTokenAddress,
                 address _lpPair, address _priceCalculatorAddress,
                 address _routerAddress, address _ubeswapRouterAddress,
-                address _xTGEN)
+                address _xTGEN,
+                address _backupMode)
                 ERC20("LiquidityBond", "LB")
     {
         rewardsToken = IERC20(_rewardsToken);
@@ -66,6 +72,7 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20, ERC11
         priceCalculator = IPriceCalculator(_priceCalculatorAddress);
         router = IRouter(_routerAddress);
         ubeswapRouter = IUniswapV2Router02(_ubeswapRouterAddress);
+        backupMode = IBackupMode(_backupMode);
         xTGEN = _xTGEN;
     }
 
@@ -97,27 +104,26 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20, ERC11
     /* ========== MUTATIVE FUNCTIONS ========== */
 
     /**
-     * @dev Converts synthetic trading bot tokens to liquidity bond tokens.
-     * @notice Bot tokens can only be converted when the reward period finishes.
-     * @notice Does not affect bond token price or staked amount for current period.
-     * @param _botToken Address of the synthetic trading bot token.
-     * @param _positionID NFT ID.
-     * @param _numberOfTokens Number of bot tokens to convert.
+     * @dev Transfers LP tokens to the user and burns their LP tokens.
      */
-    function convertBotTokens(address _botToken, uint256 _positionID, uint256 _numberOfTokens) external {
-        (,,uint256 rewardsEndOn,,,) = ISyntheticBotToken(_botToken).getPosition(_positionID);
-        require(block.timestamp >= rewardsEndOn, "LiquidityBond: rewards must finish before converting tokens.");
+    function migrateBondTokens() external nonReentrant releaseEscrowIsSet {
+        require(backupMode.useBackup(), "LiquidityBond: Protocol must be in backup mode to migrate tokens.");
+        require(!hasMigrated[msg.sender], "LiquidityBond: Already migrated.");
 
-        // Transfer bot tokens to this contract, effectively burning them.
-        IERC1155(_botToken).safeTransferFrom(msg.sender, address(this), _positionID, _numberOfTokens, "");
+        uint256 numberOfLPTokens = userLPTokens[msg.sender];
+        uint256 numberOfBondTokens = balanceOf(msg.sender);
 
-        uint256 dollarValue = ISyntheticBotToken(_botToken).getTokenPrice().mul(_numberOfTokens).div(1e18);
-        uint256 numberOfBondTokens = dollarValue.mul(10 ** 18).div(bondTokenPrice);
-        
-        // Increase total supply and transfer bond tokens to buyer.
-        _mint(msg.sender, numberOfBondTokens);
+        _claimReward();
 
-        emit ConvertedBotTokens(_botToken, _positionID, _numberOfTokens, numberOfBondTokens);
+        IERC20(address(lpPair)).safeTransfer(msg.sender, numberOfLPTokens);
+
+        totalLPTokens = totalLPTokens.sub(numberOfLPTokens);
+        userLPTokens[msg.sender] = 0;
+        hasMigrated[msg.sender] = true;
+
+        _burn(msg.sender, numberOfBondTokens);
+
+        emit MigratedBondTokens(msg.sender, numberOfLPTokens, numberOfBondTokens);
     }
 
     /**
@@ -128,12 +134,19 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20, ERC11
     function purchase(uint256 _amount) external override nonReentrant releaseEscrowIsSet rewardsHaveStarted updateReward(msg.sender) {
         require(_amount > 0, "LiquidityBond: Amount must be positive.");
         require(_amount <= MAX_PURCHASE_AMOUNT, "LiquidityBond: Amount must be less than max purchase amount.");
+        require(!backupMode.useBackup(), "LiquidityBond: Cannot purchase tokens when protocol is in backup mode.");
 
         _getReward();
 
         // Use the deposited collateral to add liquidity for TGEN-CELO.
         collateralToken.safeTransferFrom(msg.sender, address(this), _amount);
-        _addLiquidity(_amount);
+
+        // Add liquidity.
+        {
+        uint256 numberOfLPTokens = _addLiquidity(_amount);
+        userLPTokens[msg.sender] = userLPTokens[msg.sender].add(numberOfLPTokens);
+        totalLPTokens = totalLPTokens.add(numberOfLPTokens);
+        }
 
         uint256 amountOfBonusCollateral = _calculateBonusAmount(_amount);
         uint256 dollarValue = priceCalculator.getUSDPrice(address(collateralToken)).mul(_amount.add(amountOfBonusCollateral)).div(10 ** 18);
@@ -231,8 +244,9 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20, ERC11
      * @dev Supplies liquidity for TGEN-CELO pair.
      * @notice Transfers unused TGEN to xTGEN contract.
      * @param _amountOfCollateral number of asset tokens to supply.
+     * @return (uint256) Number of LP tokens received.
      */
-    function _addLiquidity(uint256 _amountOfCollateral) internal {
+    function _addLiquidity(uint256 _amountOfCollateral) internal returns (uint256) {
         collateralToken.approve(address(router), _amountOfCollateral.div(2));
         uint256 receivedTGEN = router.swapAssetForTGEN(address(collateralToken), _amountOfCollateral.div(2));
 
@@ -253,6 +267,8 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20, ERC11
 
         // Transfer unused TGEN to xTGEN contract.
         rewardsToken.safeTransfer(xTGEN, receivedTGEN.sub(neededTGEN));
+
+        return router.addLiquidity(address(collateralToken), _amountOfCollateral.div(2), neededTGEN);
     }
 
     /**
@@ -313,9 +329,9 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20, ERC11
 
     /* ========== EVENTS ========== */
 
-    event ConvertedBotTokens(address botToken, uint256 positionID, uint256 numberOfBotTokensConverted, uint256 numberOfBondTokensReceived);
     event RewardAdded(uint256 reward);
     event Purchased(address indexed user, uint256 amountDeposited, uint256 numberOfBondTokensReceived, uint256 bonus);
     event RewardPaid(address indexed user, uint256 reward);
     event SetReleaseEscrow(address releaseEscrowAddress, uint256 startTime);
+    event MigratedBondTokens(address indexed user, uint256 numberOfLPTokensReceived, uint256 numberOfBondTokensBurned);
 }
