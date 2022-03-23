@@ -5,6 +5,8 @@ pragma solidity ^0.8.3;
 //Interfaces
 import './interfaces/IUbeswapPathManager.sol';
 import './interfaces/IUniswapV2Router02.sol';
+import './interfaces/IUniswapV2Factory.sol';
+import "./interfaces/IBackupMode.sol";
 
 //OpenZeppelin
 import "./openzeppelin-solidity/contracts/ERC20/SafeERC20.sol";
@@ -18,16 +20,22 @@ contract Router is IRouter {
 
     IUbeswapPathManager public immutable pathManager;
     IUniswapV2Router02 public immutable ubeswapRouter;
+    IUniswapV2Factory public immutable ubeswapFactory;
     IERC20 public immutable TGEN;
+    IBackupMode public backupMode;
 
-    constructor(address _ubeswapPathManagerAddress, address _ubeswapRouter, address _TGEN) {
+    constructor(address _ubeswapPathManagerAddress, address _ubeswapRouter, address _ubeswapFactory, address _TGEN, address _backupMode) {
         require(_ubeswapPathManagerAddress != address(0), "Router: invalid address for UbeswapPathManager.");
         require(_ubeswapRouter != address(0), "Router: invalid address for Ubeswap router.");
+        require(_ubeswapFactory != address(0), "Router: invalid address for Ubeswap factory.");
         require(_TGEN != address(0), "Router: invalid address for TGEN.");
+        require(_backupMode != address(0), "Router: invalid address for BackupMode contract.");
 
         pathManager = IUbeswapPathManager(_ubeswapPathManagerAddress);
         ubeswapRouter = IUniswapV2Router02(_ubeswapRouter);
+        ubeswapFactory = IUniswapV2Factory(_ubeswapFactory);
         TGEN = IERC20(_TGEN);
+        backupMode = IBackupMode(_backupMode);
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
@@ -85,8 +93,9 @@ contract Router is IRouter {
     * @param _asset Address of other token.
     * @param _amountAsset Amount of other token to add.
     * @param _amountTGEN Amount of TGEN to add.
+    * @return (uint256) Number of LP tokens received.
     */
-    function addLiquidity(address _asset, uint256 _amountAsset, uint256 _amountTGEN) external override {
+    function addLiquidity(address _asset, uint256 _amountAsset, uint256 _amountTGEN) external override returns (uint256) {
         require(_asset != address(0), "Router: invalid asset address.");
         require(_amountAsset > 0, "Router: amountAsset must be positive.");
         require(_amountTGEN > 0, "Router: amountTGEN must be positive.");
@@ -100,6 +109,39 @@ contract Router is IRouter {
         (,, uint256 numberOfLPTokens) = ubeswapRouter.addLiquidity(address(TGEN), _asset, _amountTGEN, _amountAsset, 0, 0, msg.sender, block.timestamp + 10000);
 
         emit AddedLiquidity(_asset, _amountAsset, _amountTGEN, numberOfLPTokens);
+
+        return numberOfLPTokens;
+    }
+
+    /**
+    * @dev Removes liquidity for asset-TGEN pair.
+    * @notice Need to transfer LP tokens to Router contract before calling this function.
+    * @notice This function is meant to be called from the LiquidityBond contract.
+    * @param _asset Address of other token.
+    * @param _numberOfLPTokens Number of LP tokens to remove.
+    * @return (uint256, uint256) Amount of token0 received, and amount of token1 received.
+    */
+    function removeLiquidity(address _asset, uint256 _numberOfLPTokens) external override inBackupMode returns (uint256, uint256) {
+        require(_asset != address(0), "Router: invalid asset address.");
+        require(_numberOfLPTokens > 0, "Router: number of LP tokens must be positive.");
+
+        IERC20 pair = IERC20(ubeswapFactory.getPair(_asset, address(TGEN)));
+
+        pair.safeTransferFrom(msg.sender, address(this), _numberOfLPTokens);
+        pair.approve(address(ubeswapRouter), _numberOfLPTokens);
+
+        (uint256 amountA, uint256 amountB) = ubeswapRouter.removeLiquidity(address(TGEN), _asset, _numberOfLPTokens, 0, 0, msg.sender, block.timestamp + 10000);
+
+        emit RemovedLiquidity(_asset, _numberOfLPTokens, amountA, amountB);
+
+        return (amountA, amountB);
+    }
+
+    /* ========== MODIFIERS ========== */
+
+    modifier inBackupMode() {
+        require(backupMode.useBackup(), "Router: Backup mode must be on.");
+        _;
     }
 
     /* ========== EVENTS ========== */
@@ -107,4 +149,5 @@ contract Router is IRouter {
     event SwappedForTGEN(address asset, uint256 amountOfTokensSwapped, uint256 amountOfTGENReceived);
     event SwappedFromTGEN(address asset, uint256 amountOfTGENSwapped, uint256 amountOfTokensReceived);
     event AddedLiquidity(address asset, uint256 amountAsset, uint256 amountTGEN, uint256 numberOfLPTokens);
+    event RemovedLiquidity(address asset, uint256 numberOfLPTokens, uint256 amountAReceived, uint256 amountBReceived);
 }
