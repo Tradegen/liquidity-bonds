@@ -10,6 +10,7 @@ import '../interfaces/IBackupMode.sol';
 
 contract BackupMode is IBackupMode, Ownable {
     bool public override useBackup;
+    uint256 public override startTime;
 
     constructor() Ownable() {
         useBackup = false;
@@ -28,6 +29,7 @@ contract BackupMode is IBackupMode, Ownable {
         require(!useBackup, "Backup mode: already using backup mode.");
 
         useBackup = true;
+        startTime = block.timestamp;
 
         emit TurnedOnBackupMode();
     }

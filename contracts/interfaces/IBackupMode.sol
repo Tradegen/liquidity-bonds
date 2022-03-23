@@ -9,6 +9,11 @@ interface IBackupMode {
     function useBackup() external view returns (bool);
 
     /**
+    * @dev Returns the time at which backup mode was turned on.
+    */
+    function startTime() external view returns (uint256);
+
+    /**
     * @dev Turns on backup mode.
     * @notice Only the contract owner can call this function.
     * @notice When backup mode is on, the liquidity bonds program will stop and the protocol will switch to liquidity mining.
