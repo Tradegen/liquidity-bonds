@@ -25,7 +25,7 @@ contract BackupMode is IBackupMode, Ownable {
     * @notice Users will be able to convert their liquidity bonds to shares in StakingRewards contract of equivalent value, and regain control of their LP tokens.
     * @notice Backup mode will only be turned on if the majority of users want to exit their liquidity bond position and are unable to do so through ExecutionPrices. 
     */
-    function turnOnBackupMode() external onlyOwner {
+    function turnOnBackupMode() external override onlyOwner {
         require(!useBackup, "Backup mode: already using backup mode.");
 
         useBackup = true;

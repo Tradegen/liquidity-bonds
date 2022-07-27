@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { parseEther } = require("@ethersproject/units");
-/*
+
 describe("Router", () => {
   let deployer;
   let otherUser;
@@ -73,7 +73,7 @@ describe("Router", () => {
     await ubeswapRouter.deployed();
     ubeswapRouterAddress = ubeswapRouter.address;
 
-    router = await RouterFactory.deploy(pathManagerAddress, ubeswapRouterAddress, tradegenTokenAddress);
+    router = await RouterFactory.deploy(pathManagerAddress, ubeswapRouterAddress, ubeswapFactoryAddress, tradegenTokenAddress);
     await router.deployed();
     routerAddress = router.address;
 
@@ -289,4 +289,4 @@ describe("Router", () => {
         expect(reserves[0]).to.equal("769763682549457316604");
     });
   });
-});*/
+});
