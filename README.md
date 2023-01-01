@@ -2,9 +2,11 @@
 
 ## Purpose
 
+Implement an alternative order book and liquidity mining program.
+
 ## Overview
 
-Liquidity bonds are an alternative to existing liquidity mining programs. Under the liquidity bonds program, users can bond CELO to mint 'bond tokens' that farm TGEN indefinitely. Half of the deposited CELO is automatically swapped for TGEN and is added as liquidity to the TGEN-CELO pair on Ubeswap. Users can exit their liquidity position by selling their bond tokens on the platform's marketplace. 
+Liquidity bonds are an alternative to existing liquidity mining programs. Under the liquidity bonds program, users can bond CELO (the native coin of the Celo blockchain) to mint 'bond tokens' that farm TGEN (the protocol's governance token) indefinitely. Half of the deposited CELO is automatically swapped for TGEN and is added as liquidity to the TGEN-CELO pair on Ubeswap (a decentralized exchange launched on Celo). Users can exit their liquidity position by selling their bond tokens through an order book.
 
 ## System Design
 
