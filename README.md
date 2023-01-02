@@ -10,15 +10,14 @@ Liquidity bonds are an alternative to existing liquidity mining programs. Under 
 
 Each order book is an NFT that executes orders for bond tokens at a pre-determined price. An order book NFT can be minted by paying a one-time fee to the protocol and specifying a unique execution price. The owner of the NFT collects a fee whenever users trade bond tokens on the owner's order book. The NFTs can be traded on the platform's marketplace, or an external marketplace that supports the ERC1155 standard.
 
-## System Design
-
-
-
 ## Disclaimer
 
 These smart contracts have not been audited yet.
 
 This protocol is experimental.
+
+## System Design
+
 
 ## Repository Structure
 
@@ -36,7 +35,7 @@ This protocol is experimental.
 
 ## Backup Mode
 
-
+This protocol includes a backup mode, which pauses the minting of new bond tokens and switches to a standard liquidity mining program. Since this protocol is experimental, a backup mode is included to make sure users can recover their investment if the protocol doesn't work as intended. If backup mode is enabled, users will be able to burn their bond tokens to receive the underlying LP (liquidity provider) tokens. These LP tokens can be burned to recover the underlying assets (TGEN and CELO) or deposited into a farming contract to collect rewards while staying invested in the underlying assets. Backup mode will only be enabled if the majority of users vote in favor of it.
 
 ## Documentation
 
