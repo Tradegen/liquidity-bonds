@@ -28,7 +28,6 @@ contract StakingRewards is IStakingRewards, ReentrancyGuard, Ownable {
     IReleaseEscrow public releaseEscrow;
     IBackupMode public backupMode;
     address public poolAddress;
-    address public xTGEN;
 
     uint256 public startTime;
 
@@ -43,12 +42,11 @@ contract StakingRewards is IStakingRewards, ReentrancyGuard, Ownable {
 
     /* ========== CONSTRUCTOR ========== */
 
-    constructor(address _releaseEscrow, address _backupMode, address _rewardsToken, address _stakingToken, address _xTGEN) Ownable() {
+    constructor(address _releaseEscrow, address _backupMode, address _rewardsToken, address _stakingToken) Ownable() {
         rewardsToken = IERC20(_rewardsToken);
         backupMode = IBackupMode(_backupMode);
         stakingToken = IERC20(_stakingToken);
         releaseEscrow = IReleaseEscrow(_releaseEscrow);
-        xTGEN = _xTGEN;
     }
 
     /* ========== VIEWS ========== */
