@@ -24,7 +24,7 @@ Liquidity bond tokens are fungible tokens that follow the ERC20 standard. They c
 
 An order book is implemented as a queue that consists of either only 'buy' orders or only 'sell' orders. When the order book is a 'buy' queue, new 'buy' orders are appended to the queue (up to the queue size specified by the ExecutionPrice owner) and 'sell' orders fill starting from the beginning of the queue. If a 'sell' order is unfilled after all 'buy' orders have been filled, the queue becomes a 'sell' queue with the unfilled amount as the quantity of the first order. The opposite is true when the order book is a 'sell' queue. The index of each order is strictly increasing to efficiently keep track of the start/end of the queue.
 
-
+Under the liquidity mining program, rewards are distributed to liquidity bond token holders proportional to the number of tokens they hold. Rewards are distributed according to a halvening release schedule consisting of 26-week cycles running indefinitely. The reward distribution of the first cycle is half of the lifetime distribution, and the distribution of each subsequent cycle is reduced by half. A halvening release schedule is used, as opposed to a linear release schedule, to ensure the program runs indefinitely while limiting inflation.
 
 ### Smart Contracts
 
@@ -59,6 +59,10 @@ This protocol includes a backup mode, which pauses the minting of new bond token
 ## Documentation
 
 To learn more about the Tradegen project, visit the docs at https://docs.tradegen.io.
+
+This project is launched on the Celo blockchain. To learn more about Celo, visit their home page: https://celo.org/.
+
+Source code for the Tradegen token (TGEN): https://github.com/Tradegen/tradegen-token.
 
 ## License
 
