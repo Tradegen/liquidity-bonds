@@ -2,15 +2,15 @@
 
 pragma solidity ^0.8.3;
 
-// OpenZeppelin
+// OpenZeppelin.
 import "./openzeppelin-solidity/contracts/ERC20/SafeERC20.sol";
 import "./openzeppelin-solidity/contracts/ERC20/IERC20.sol";
 import "./openzeppelin-solidity/contracts/SafeMath.sol";
 
-// Inheritance
+// Inheritance.
 import './interfaces/IExecutionPrice.sol';
 
-// Interfaces
+// Interfaces.
 import './interfaces/IPriceManager.sol';
 import './interfaces/ILiquidityBond.sol';
 
@@ -18,25 +18,15 @@ contract ExecutionPrice is IExecutionPrice {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
-    struct Order {
-        address user;
-        uint256 quantity;
-        uint256 amountFilled;
-    }
+    /* ========== CONSTANTS ========== */
 
-    struct Params {
-        uint256 price; // Number of TGEN per bond token
-        uint256 maximumNumberOfInvestors;
-        uint256 tradingFee;
-        uint256 minimumOrderSize;
-        address owner;
-    }
-
-    uint256 constant MIN_MINIMUM_ORDER_VALUE = 1e18; // $1
-    uint256 constant MAX_MINIMUM_ORDER_VALUE = 1e20; // $100
+    uint256 constant MIN_MINIMUM_ORDER_VALUE = 1e18; // $1.
+    uint256 constant MAX_MINIMUM_ORDER_VALUE = 1e20; // $100.
     uint256 constant MIN_MAXIMUM_NUMBER_OF_INVESTORS = 10;
     uint256 constant MAX_MAXIMUM_NUMBER_OF_INVESTORS = 50;
-    uint256 constant MAX_TRADING_FEE = 300; // 3%, with 10000 as denominator
+    uint256 constant MAX_TRADING_FEE = 300; // 3%, with 10000 as denominator.
+
+    /* ========== STATE VARIABLES ========== */
 
     IERC20 immutable TGEN;
     IERC20 immutable bondToken;
@@ -46,11 +36,11 @@ contract ExecutionPrice is IExecutionPrice {
 
     Params public params;
 
+    // Both indicies are strictly increasing.
     uint256 public startIndex = 1;
     uint256 public endIndex = 1;
 
     // Number of tokens in the queue.
-    // When the queue is a 'buy queue', this represents 
     uint256 public numberOfTokensAvailable;
 
     // Order index => order info.
@@ -65,6 +55,8 @@ contract ExecutionPrice is IExecutionPrice {
     bool public isBuyQueue;
 
     bool internal initialized;
+
+    /* ========== CONSTRUCTOR ========== */
 
     constructor(address _TGEN, address _bondToken, address _marketplace, address _xTGEN) {
         TGEN = IERC20(_TGEN);
@@ -86,12 +78,12 @@ contract ExecutionPrice is IExecutionPrice {
     /* ========== MUTATIVE FUNCTIONS ========== */
 
     /**
-     * @dev Creates an order to buy bond tokens.
-     * @notice Executes existing 'sell' orders before adding this order.
+     * @notice Creates an order to buy bond tokens.
+     * @dev Executes existing 'sell' orders before adding this order.
      * @param _amount number of bond tokens to buy.
      */
     function buy(uint256 _amount) public override isInitialized {
-        require(_amount >= params.minimumOrderSize, "ExecutionPrice: amount must be above minimum order size.");
+        require(_amount >= params.minimumOrderSize, "ExecutionPrice: Amount must be above minimum order size.");
 
         TGEN.safeTransferFrom(msg.sender, address(this), _amount.mul(params.price).div(1e18));
 
@@ -104,7 +96,7 @@ contract ExecutionPrice is IExecutionPrice {
             }
             // Add order to queue.
             else {
-                require(endIndex.sub(startIndex) <= params.maximumNumberOfInvestors, "ExecutionPrice: queue is full.");
+                require(endIndex.sub(startIndex) <= params.maximumNumberOfInvestors, "ExecutionPrice: Queue is full.");
                 _append(msg.sender, _amount);
             }
 
@@ -128,12 +120,12 @@ contract ExecutionPrice is IExecutionPrice {
     }
 
     /**
-     * @dev Creates an order to sell bond tokens.
-     * @notice Executes existing 'buy' orders before adding this order.
+     * @notice Creates an order to sell bond tokens.
+     * @dev Executes existing 'buy' orders before adding this order.
      * @param _amount number of bond tokens to sell.
      */
     function sell(uint256 _amount) public override isInitialized {
-        require(_amount >= params.minimumOrderSize, "ExecutionPrice: amount must be above minimum order size.");
+        require(_amount >= params.minimumOrderSize, "ExecutionPrice: Amount must be above minimum order size.");
 
         bondToken.safeTransferFrom(msg.sender, address(this), _amount);
 
@@ -161,7 +153,7 @@ contract ExecutionPrice is IExecutionPrice {
             }
             // Add order to queue.
             else {
-                require(endIndex.sub(startIndex) <= params.maximumNumberOfInvestors, "ExecutionPrice: queue is full.");
+                require(endIndex.sub(startIndex) <= params.maximumNumberOfInvestors, "ExecutionPrice: Queue is full.");
                 _append(msg.sender, _amount);
             }
 
@@ -170,14 +162,14 @@ contract ExecutionPrice is IExecutionPrice {
     }
 
    /**
-     * @dev Updates the order quantity and transaction type (buy vs. sell).
-     * @notice If the transaction type is different from the original type,
+     * @notice Updates the order quantity and transaction type (buy vs. sell).
+     * @dev If the transaction type is different from the original type,
      *          existing orders will be executed before updating this order.
      * @param _amount number of bond tokens to buy/sell.
      * @param _buy whether this is a 'buy' order.
      */
     function updateOrder(uint256 _amount, bool _buy) external override isInitialized {
-        require(_amount >= params.minimumOrderSize, "ExecutionPrice: amount must be above minimum order size.");
+        require(_amount >= params.minimumOrderSize, "ExecutionPrice: Amount must be above minimum order size.");
 
         // User's previous order is filled, so treat this as a new order.
         if (orderIndex[msg.sender] < startIndex) {
@@ -256,7 +248,7 @@ contract ExecutionPrice is IExecutionPrice {
     /* ========== INTERNAL FUNCTIONS ========== */
 
     /**
-     * @dev Adds an order to the end of the queue.
+     * @notice Adds an order to the end of the queue.
      * @param _user address of the user placing this order.
      * @param _amount number of bond tokens.
      */
@@ -273,9 +265,9 @@ contract ExecutionPrice is IExecutionPrice {
     }
 
     /**
-     * @dev Executes an order based on the queue type.
-     * @notice If queue is a 'buy queue', this will be treated as a 'sell' order. 
-     * @notice Fee is paid in bond tokens if queue is a 'sell queue'.
+     * @notice Executes an order based on the queue type.
+     * @dev If queue is a 'buy queue', this will be treated as a 'sell' order. 
+     * @dev Fee is paid in bond tokens if queue is a 'sell queue'.
      * @param _amount number of bond tokens.
      * @return totalFilledAmount - number of bond tokens bought/sold.
      */
@@ -341,12 +333,12 @@ contract ExecutionPrice is IExecutionPrice {
     /* ========== RESTRICTED FUNCTIONS ========== */
 
     /**
-     * @dev Updates the trading fee for this ExecutionPrice.
-     * @notice This function is meant to be called by the contract owner.
+     * @notice Updates the trading fee for this ExecutionPrice.
+     * @dev This function is meant to be called by the contract owner.
      * @param _newFee the new trading fee.
      */
     function updateTradingFee(uint256 _newFee) external override onlyOwner isInitialized {
-        require(_newFee >= 0 && _newFee <= MAX_TRADING_FEE, "ExecutionPrice: trading fee out of range.");
+        require(_newFee >= 0 && _newFee <= MAX_TRADING_FEE, "ExecutionPrice: Trading fee out of range.");
 
         params.tradingFee = _newFee;
 
@@ -354,13 +346,13 @@ contract ExecutionPrice is IExecutionPrice {
     }
 
     /**
-     * @dev Updates the minimum order size for this ExecutionPrice.
-     * @notice This function is meant to be called by the contract owner.
+     * @notice Updates the minimum order size for this ExecutionPrice.
+     * @dev This function is meant to be called by the contract owner.
      * @param _newSize the new minimum order size.
      */
     function updateMinimumOrderSize(uint256 _newSize) external override onlyOwner isInitialized {
-        require(_newSize.mul(params.price).div(1e18) >= MIN_MINIMUM_ORDER_VALUE, "ExecutionPrice: minimum order size is too low.");
-        require(_newSize.mul(params.price).div(1e18) <= MAX_MINIMUM_ORDER_VALUE, "ExecutionPrice: minimum order size is too high.");
+        require(_newSize.mul(params.price).div(1e18) >= MIN_MINIMUM_ORDER_VALUE, "ExecutionPrice: Minimum order size is too low.");
+        require(_newSize.mul(params.price).div(1e18) <= MAX_MINIMUM_ORDER_VALUE, "ExecutionPrice: Minimum order size is too high.");
 
         params.minimumOrderSize = _newSize;
 
@@ -368,13 +360,13 @@ contract ExecutionPrice is IExecutionPrice {
     }
 
     /**
-     * @dev Updates the owner of this ExecutionPrice.
-     * @notice This function is meant to be called by the ExecutionPriceFactory contract whenever the
+     * @notice Updates the owner of this ExecutionPrice.
+     * @dev This function is meant to be called by the ExecutionPriceFactory contract whenever the
      *          ExecutionPrice NFT is purchased by another user.
      * @param _newOwner the new contract owner.
      */
     function updateContractOwner(address _newOwner) external override onlyFactory isInitialized {
-        require(_newOwner != address(0) && _newOwner != params.owner, "ExecutionPrice: invalid address for new owner.");
+        require(_newOwner != address(0) && _newOwner != params.owner, "ExecutionPrice: Invalid address for new owner.");
 
         params.owner = _newOwner;
 
@@ -382,8 +374,8 @@ contract ExecutionPrice is IExecutionPrice {
     }
 
     /**
-     * @dev Initializes the contract's parameters.
-     * @notice This function is meant to be called by the ExecutionPriceFactory contract when creating this contract.
+     * @notice Initializes the contract's parameters.
+     * @dev This function is meant to be called by the ExecutionPriceFactory contract when creating this contract.
      * @param _price the price of each bond token.
      * @param _maximumNumberOfInvestors the maximum number of open orders the queue can have.
      * @param _tradingFee fee that is paid to the contract owner whenever an order is filled; denominated by 10000.
@@ -391,11 +383,11 @@ contract ExecutionPrice is IExecutionPrice {
      * @param _owner address of the contract owner.
      */
     function initialize(uint256 _price, uint256 _maximumNumberOfInvestors, uint256 _tradingFee, uint256 _minimumOrderSize, address _owner) external override onlyFactory isNotInitialized {
-        require(_maximumNumberOfInvestors >= MIN_MAXIMUM_NUMBER_OF_INVESTORS, "ExecutionPrice: maximum number of investors is too low.");
-        require(_maximumNumberOfInvestors <= MAX_MAXIMUM_NUMBER_OF_INVESTORS, "ExecutionPrice: maximum number of investors is too high.");
-        require(_tradingFee >= 0 && _tradingFee <= MAX_TRADING_FEE, "ExecutionPrice: trading fee out of range.");
-        require(_minimumOrderSize.mul(_price).div(1e18) >= MIN_MINIMUM_ORDER_VALUE, "ExecutionPrice: minimum order size is too low.");
-        require(_minimumOrderSize.mul(_price).div(1e18) <= MAX_MINIMUM_ORDER_VALUE, "ExecutionPrice: minimum order size is too high.");
+        require(_maximumNumberOfInvestors >= MIN_MAXIMUM_NUMBER_OF_INVESTORS, "ExecutionPrice: Maximum number of investors is too low.");
+        require(_maximumNumberOfInvestors <= MAX_MAXIMUM_NUMBER_OF_INVESTORS, "ExecutionPrice: Maximum number of investors is too high.");
+        require(_tradingFee >= 0 && _tradingFee <= MAX_TRADING_FEE, "ExecutionPrice: Trading fee out of range.");
+        require(_minimumOrderSize.mul(_price).div(1e18) >= MIN_MINIMUM_ORDER_VALUE, "ExecutionPrice: Minimum order size is too low.");
+        require(_minimumOrderSize.mul(_price).div(1e18) <= MAX_MINIMUM_ORDER_VALUE, "ExecutionPrice: Minimum order size is too high.");
 
         params = Params({
             price: _price,
@@ -413,22 +405,22 @@ contract ExecutionPrice is IExecutionPrice {
     /* ========== MODIFIERS ========== */
 
     modifier onlyFactory() {
-        require(msg.sender == factory, "ExecutionPrice: only the ExecutionPriceFactory contract can call this function.");
+        require(msg.sender == factory, "ExecutionPrice: Only the ExecutionPriceFactory contract can call this function.");
         _;
     }
 
     modifier onlyOwner() {
-        require(msg.sender == params.owner, "ExecutionPrice: only the contract owner can call this function.");
+        require(msg.sender == params.owner, "ExecutionPrice: Only the contract owner can call this function.");
         _;
     }
 
     modifier isNotInitialized() {
-        require(!initialized, "ExecutionPrice: contract must not be initialized.");
+        require(!initialized, "ExecutionPrice: Contract must not be initialized.");
         _;
     }
 
     modifier isInitialized() {
-        require(initialized, "ExecutionPrice: contract must be initialized.");
+        require(initialized, "ExecutionPrice: Contract must be initialized.");
         _;
     }
 

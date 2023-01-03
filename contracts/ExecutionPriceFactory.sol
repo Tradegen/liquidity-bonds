@@ -3,16 +3,16 @@
 
 pragma solidity ^0.8.3;
 
-// OpenZeppelin
+// OpenZeppelin.
 import "./openzeppelin-solidity/contracts/Ownable.sol";
 import "./openzeppelin-solidity/contracts/ERC20/SafeERC20.sol";
 
-// Internal references
+// Internal references.
 import "./ExecutionPrice.sol";
 import "./interfaces/IExecutionPrice.sol";
 import "./interfaces/IPriceManager.sol";
 
-// Inheritance
+// Inheritance.
 import "./interfaces/IExecutionPriceFactory.sol";
 
 contract ExecutionPriceFactory is IExecutionPriceFactory, Ownable {
@@ -21,7 +21,7 @@ contract ExecutionPriceFactory is IExecutionPriceFactory, Ownable {
     /* ========== CONSTANTS ========== */
 
     uint256 public MAX_INDEX = 10000;
-    uint256 public MINT_COST = 1e20; // 100 bond tokens
+    uint256 public MINT_COST = 1e20; // 100 bond tokens.
 
     /* ========== STATE VARIABLES ========== */
 
@@ -43,14 +43,14 @@ contract ExecutionPriceFactory is IExecutionPriceFactory, Ownable {
     /* ========== MUTATIVE FUNCTIONS ========== */
 
     /**
-     * @dev Purchases the ExecutionPrice NFT at the given index.
+     * @notice Purchases the ExecutionPrice NFT at the given index.
      * @param _index index of the ExecutionPrice NFT.
      * @param _maximumNumberOfInvestors the maximum number of open orders the queue can have.
      * @param _tradingFee fee that is paid to the contract owner whenever an order is filled; denominated by 10000.
      * @param _minimumOrderSize minimum number of bond tokens per order.
      */
     function purchase(uint256 _index, uint256 _maximumNumberOfInvestors, uint256 _tradingFee, uint256 _minimumOrderSize) external priceManagerIsSet {
-        require(_index > 0 && _index <= MAX_INDEX, "PriceManager: index out of range.");
+        require(_index > 0 && _index <= MAX_INDEX, "PriceManager: Index out of range.");
 
         uint256 price = priceManager.calculatePrice(_index);
 
@@ -70,8 +70,8 @@ contract ExecutionPriceFactory is IExecutionPriceFactory, Ownable {
     /* ========== RESTRICTED FUNCTIONS ========== */
 
     /**
-     * @dev Sets the address of the PriceManager contract.
-     * @notice This function can only be called by the owner of this contract.
+     * @notice Sets the address of the PriceManager contract.
+     * @dev This function can only be called by the owner of this contract.
      * @param _priceManager Address of the PriceManager contract.
      */
     function setPriceManager(address _priceManager) external onlyOwner priceManagerIsNotSet {
@@ -81,8 +81,8 @@ contract ExecutionPriceFactory is IExecutionPriceFactory, Ownable {
     }
 
     /**
-    * @dev Updates the owner of the given ExecutionPrice contract.
-    * @notice This function can only be called by the PriceManager contract.
+    * @notice Updates the owner of the given ExecutionPrice contract.
+    * @dev This function can only be called by the PriceManager contract.
     * @param _executionPrice Address of the ExecutionPrice address.
     * @param _newOwner Address of the new owner for the ExecutionPrice contract.
     */

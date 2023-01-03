@@ -3,18 +3,18 @@
 
 pragma solidity ^0.8.3;
 
-// OpenZeppelin
+// OpenZeppelin.
 import "../openzeppelin-solidity/contracts/Math.sol";
 import "../openzeppelin-solidity/contracts/Ownable.sol";
 import "../openzeppelin-solidity/contracts/SafeMath.sol";
 import "../openzeppelin-solidity/contracts/ReentrancyGuard.sol";
 import "../openzeppelin-solidity/contracts/ERC20/SafeERC20.sol";
 
-// Interfaces
+// Interfaces.
 import "../interfaces/IReleaseEscrow.sol";
 import "../interfaces/IBackupMode.sol";
 
-// Inheritance
+// Inheritance.
 import "../interfaces/IStakingRewards.sol";
 
 contract StakingRewards is IStakingRewards, ReentrancyGuard, Ownable {
@@ -23,8 +23,8 @@ contract StakingRewards is IStakingRewards, ReentrancyGuard, Ownable {
 
     /* ========== STATE VARIABLES ========== */
 
-    IERC20 public rewardsToken; // TGEN
-    IERC20 public stakingToken; // TGEN-CELO LP token
+    IERC20 public rewardsToken; // TGEN.
+    IERC20 public stakingToken; // TGEN-CELO LP token.
     IReleaseEscrow public releaseEscrow;
     IBackupMode public backupMode;
     address public poolAddress;
@@ -54,7 +54,7 @@ contract StakingRewards is IStakingRewards, ReentrancyGuard, Ownable {
     /* ========== VIEWS ========== */
 
     /**
-     * @dev Calculates the amount of unclaimed rewards the user has available.
+     * @notice Calculates the amount of unclaimed rewards the user has available.
      * @param account address of the user.
      * @return (uint256) amount of available unclaimed rewards.
      */
@@ -65,7 +65,7 @@ contract StakingRewards is IStakingRewards, ReentrancyGuard, Ownable {
     /* ========== MUTATIVE FUNCTIONS ========== */
 
     /**
-     * @dev Stakes LP tokens in the farm.
+     * @notice Stakes LP tokens in the farm.
      * @param amount number of tokens to stake.
      */
     function stake(uint256 amount) external override nonReentrant inBackupMode releaseEscrowIsSet updateReward(msg.sender) {
@@ -80,7 +80,7 @@ contract StakingRewards is IStakingRewards, ReentrancyGuard, Ownable {
     }
 
     /**
-     * @dev Withdraws LP tokens from the farm.
+     * @notice Withdraws LP tokens from the farm.
      * @param amount number of tokens to stake.
      */
     function withdraw(uint256 amount) public override nonReentrant inBackupMode releaseEscrowIsSet updateReward(msg.sender) {
@@ -90,15 +90,15 @@ contract StakingRewards is IStakingRewards, ReentrancyGuard, Ownable {
     }
 
     /**
-     * @dev Claims available rewards for the user.
-     * @notice Withdraws farm's rewards from escrow contract first, then claims the user's share of those rewards.
+     * @notice Claims available rewards for the user.
+     * @dev Withdraws farm's rewards from escrow contract first, then claims the user's share of those rewards.
      */
     function getReward() public override nonReentrant inBackupMode releaseEscrowIsSet {
         _getReward();
     }
 
     /**
-     * @dev Withdraws all LP tokens a user has staked.
+     * @notice Withdraws all LP tokens a user has staked.
      */
     function exit() external override inBackupMode releaseEscrowIsSet {
         _getReward();
@@ -108,7 +108,7 @@ contract StakingRewards is IStakingRewards, ReentrancyGuard, Ownable {
     /* ========== INTERNAL FUNCTIONS ========== */
 
     /**
-     * @dev Claims available rewards for the user.
+     * @notice Claims available rewards for the user.
      */
     function _getReward() internal updateReward(msg.sender) {
         uint256 reward = rewards[msg.sender];
@@ -120,6 +120,9 @@ contract StakingRewards is IStakingRewards, ReentrancyGuard, Ownable {
         }
     }
 
+    /**
+     * @notice Withdraws the user's LP tokens.
+     */
     function _withdraw(address _user, uint _amount) internal {
         totalSupply = totalSupply.sub(_amount);
         balanceOf[_user] = balanceOf[_user].sub(_amount);
@@ -132,7 +135,7 @@ contract StakingRewards is IStakingRewards, ReentrancyGuard, Ownable {
     /* ========== RESTRICTED FUNCTIONS ========== */
 
     /**
-     * @dev Updates the available rewards for the StakingRewards contract, based on the release schedule.
+     * @notice Updates the available rewards for the StakingRewards contract, based on the release schedule.
      * @param _reward number of tokens to add to the StakingRewards contract.
      */
     function _addReward(uint256 _reward) internal {
@@ -146,11 +149,11 @@ contract StakingRewards is IStakingRewards, ReentrancyGuard, Ownable {
     }
 
     /**
-     * @dev Sets the address of the ReleaseEscrow contract.
-     * @notice This function can only be called once, and must be called before users can interact with StakingRewards contract.
+     * @notice Sets the address of the ReleaseEscrow contract.
+     * @dev This function can only be called once, and must be called before users can interact with StakingRewards contract.
      */
     function setReleaseEscrow(address _releaseEscrow) external onlyOwner releaseEscrowIsNotSet {
-        require(_releaseEscrow != address(0), "StakingRewards: invalid address.");
+        require(_releaseEscrow != address(0), "StakingRewards: Invalid address.");
 
         releaseEscrow = IReleaseEscrow(_releaseEscrow);
         startTime = backupMode.startTime();

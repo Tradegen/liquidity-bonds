@@ -2,21 +2,18 @@
 
 pragma solidity ^0.8.3;
 
-// Openzeppelin
+// Openzeppelin.
 import "./openzeppelin-solidity/contracts/ERC20/SafeERC20.sol";
 import "./openzeppelin-solidity/contracts/SafeMath.sol";
 import "./openzeppelin-solidity/contracts/ReentrancyGuard.sol";
 
-// Interfaces
+// Interfaces.
 import "./interfaces/IReleaseSchedule.sol";
 import "./interfaces/IBackupMode.sol";
 
-// Inheritance
+// Inheritance.
 import "./interfaces/IReleaseEscrow.sol";
 
-/**
- * Escrow to release tokens according to a schedule.
- */
 contract ReleaseEscrow is ReentrancyGuard, IReleaseEscrow {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
@@ -67,28 +64,28 @@ contract ReleaseEscrow is ReentrancyGuard, IReleaseEscrow {
     /* ========== VIEWS ========== */
 
     /**
-     * Returns true if release has already started.
+     * @notice Returns true if release has already started.
      */
     function hasStarted() public view override returns (bool) {
         return block.timestamp >= startTime;
     }
 
     /**
-     * Returns the number of tokens left to distribute.
+     * @notice Returns the number of tokens left to distribute.
      */
     function remainingRewards() external view override returns (uint256) {
         return rewardToken.balanceOf(address(this));
     }
 
     /**
-     * Returns the number of tokens that have vested based on a schedule.
+     * @notice Returns the number of tokens that have vested based on a schedule.
      */
     function releasedRewards() public view override returns (uint256) {
         return lifetimeRewards.sub(rewardToken.balanceOf(address(this)));
     }
 
     /**
-     * Returns the number of vested tokens that have not been claimed yet.
+     * @notice Returns the number of vested tokens that have not been claimed yet.
      */
     function unclaimedRewards() external view override returns (uint256) {
         return releasedRewards().sub(distributedRewards);
@@ -97,15 +94,15 @@ contract ReleaseEscrow is ReentrancyGuard, IReleaseEscrow {
     /* ========== MUTATIVE FUNCTIONS ========== */
 
    /**
-     * Withdraws tokens based on the current reward rate and the time since last withdrawal.
-     * @notice This function is called by the LiquidityBond contract whenever a user claims rewards.
+     * @notice Withdraws tokens based on the current reward rate and the time since last withdrawal.
+     * @dev This function is called by the LiquidityBond contract whenever a user claims rewards.
      * @return uint256 Number of tokens claimed.
      */
     function withdraw() external override started onlyBeneficiary nonReentrant returns(uint256) {
         uint256 startOfCycle = schedule.getStartOfCurrentCycle();
         uint256 availableTokens = 0;
 
-        // Check for cross-cycle rewards
+        // Check for cross-cycle rewards.
         if (lastWithdrawalTime < startOfCycle) {
             availableTokens = (startOfCycle.sub(lastWithdrawalTime)).mul(schedule.getCurrentRewardRate().mul(2));
             availableTokens = availableTokens.add((block.timestamp.sub(startOfCycle)).mul(schedule.getCurrentRewardRate()));
@@ -124,14 +121,14 @@ contract ReleaseEscrow is ReentrancyGuard, IReleaseEscrow {
     /* ========== MODIFIERS ========== */
 
     modifier started {
-        require(hasStarted(), "ReleaseEscrow: release has not started yet");
+        require(hasStarted(), "ReleaseEscrow: Release has not started yet");
         _;
     }
 
     modifier onlyBeneficiary {
         require((msg.sender == beneficiary && !backupMode.useBackup()) ||
                 (msg.sender == backupBeneficiary && backupMode.useBackup()),
-                "ReleaseEscrow: only the beneficiary can call this function");
+                "ReleaseEscrow: Only the beneficiary can call this function");
         _;
     }
 }

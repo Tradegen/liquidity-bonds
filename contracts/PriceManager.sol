@@ -3,16 +3,17 @@
 
 pragma solidity ^0.8.3;
 
+// OpenZeppelin.
 import "./openzeppelin-solidity/contracts/SafeMath.sol";
 import "./openzeppelin-solidity/contracts/ERC20/SafeERC20.sol";
 import "./openzeppelin-solidity/contracts/ERC1155/ERC1155.sol";
 
-// Internal references
+// Internal references.
 import "./ExecutionPrice.sol";
 import "./interfaces/IExecutionPrice.sol";
 import "./interfaces/IExecutionPriceFactory.sol";
 
-// Inheritance
+// Inheritance.
 import "./interfaces/IPriceManager.sol";
 
 contract PriceManager is IPriceManager, ERC1155 {
@@ -28,8 +29,8 @@ contract PriceManager is IPriceManager, ERC1155 {
 
     /* ========== CONSTANTS ========== */
 
-    uint256 public MAX_INDEX = 10000;
-    uint256 public MINT_COST = 1e20; // 100 bond tokens
+    uint256 public MAX_INDEX = 10000; // Max of 10000 ExecutionPrice NFTs can be minted.
+    uint256 public MINT_COST = 1e20; // 100 bond tokens.
 
     /* ========== STATE VARIABLES ========== */
 
@@ -42,7 +43,7 @@ contract PriceManager is IPriceManager, ERC1155 {
     /* ========== CONSTRUCTOR ========== */
 
     constructor(address _factory) ERC1155() {
-        require(_factory != address(0), "PriceManager: invalid address for factory.");
+        require(_factory != address(0), "PriceManager: Invalid address for factory.");
 
         factory = IExecutionPriceFactory(_factory);
     }
@@ -50,11 +51,13 @@ contract PriceManager is IPriceManager, ERC1155 {
     /* ========== VIEWS ========== */
 
     /**
-     * @dev Calculates the price of an ExecutionPrice NFT, given its index.
+     * @notice Calculates the price of an ExecutionPrice NFT, given its index.
+     * @dev Execution price starts at $1 at index 1 and increase by 1% per index.
+     * @dev Execution price is denominated in CELO.
      * @param _index index of the ExecutionPrice NFT.
      */
     function calculatePrice(uint256 _index) public view override returns (uint256) {
-        require (_index > 0 && _index <= MAX_INDEX, "PriceManager: index out of range.");
+        require (_index > 0 && _index <= MAX_INDEX, "PriceManager: Index out of range.");
 
         if (executionPrices[_index].price > 0) {
             return executionPrices[_index].price;
@@ -98,7 +101,7 @@ contract PriceManager is IPriceManager, ERC1155 {
     }
 
     /**
-     * @dev Checks whether the given ExecutionPrice is registered in PriceManager.
+     * @notice Checks whether the given ExecutionPrice is registered in PriceManager.
      * @param _contractAddress address of the ExecutionPrice contract.
      * @return (bool) whether the address is registered.
      */
@@ -109,7 +112,7 @@ contract PriceManager is IPriceManager, ERC1155 {
     /* ========== MUTATIVE FUNCTIONS ========== */
 
     /**
-    * @dev Transfers tokens from seller to buyer.
+    * @notice Transfers tokens from seller to buyer.
     * @param from Address of the seller.
     * @param to Address of the buyer.
     * @param id The index of the ExecutionPrice contract.
@@ -119,10 +122,10 @@ contract PriceManager is IPriceManager, ERC1155 {
     function safeTransferFrom(address from, address to, uint id, uint amount, bytes memory data) public override {
         require(
             from == _msgSender() || isApprovedForAll(from, _msgSender()),
-            "PriceManager: caller is not owner nor approved."
+            "PriceManager: Caller is not owner nor approved."
         );
-        require(amount == 1, "PriceManager: amount must be 1.");
-        require(from == executionPrices[id].owner, "PriceManager: only the NFT owner can transfer.");
+        require(amount == 1, "PriceManager: Amount must be 1.");
+        require(from == executionPrices[id].owner, "PriceManager: Only the NFT owner can transfer.");
 
         // Update the owner of the ExecutionPrice contract.
         factory.updateContractOwner(executionPrices[id].contractAddress, to);
@@ -137,8 +140,8 @@ contract PriceManager is IPriceManager, ERC1155 {
     /* ========== RESTRICTED FUNCTIONS ========== */
 
     /**
-     * @dev Registers the NFT at the given index.
-     * @notice Assumes parameters were checked by the calling function.
+     * @notice Registers the NFT at the given index.
+     * @dev Assumes parameters were checked by the calling function.
      * @param _index index of the ExecutionPrice NFT.
      * @param _owner Address of the NFT's owner.
      * @param _contractAddress Address of the ExecutionPrice associated with this NFT.
@@ -162,12 +165,12 @@ contract PriceManager is IPriceManager, ERC1155 {
     /* ========== MODIFIERS ========== */
 
     modifier notMinted(uint256 _index) {
-        require(executionPrices[_index].owner  == address(0), "PriceManager: already minted.");
+        require(executionPrices[_index].owner  == address(0), "PriceManager: Already minted.");
         _;
     }
 
     modifier onlyFactory() {
-        require(msg.sender == address(factory), "PriceManager: only the factory contract can call this function.");
+        require(msg.sender == address(factory), "PriceManager: Only the factory contract can call this function.");
         _;
     }
 

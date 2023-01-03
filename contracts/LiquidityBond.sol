@@ -3,16 +3,17 @@
 
 pragma solidity ^0.8.3;
 
+// OpenZeppelin.
 import "./openzeppelin-solidity/contracts/SafeMath.sol";
 import "./openzeppelin-solidity/contracts/ReentrancyGuard.sol";
 import "./openzeppelin-solidity/contracts/Ownable.sol";
 import "./openzeppelin-solidity/contracts/ERC20/SafeERC20.sol";
 import "./openzeppelin-solidity/contracts/ERC20/ERC20.sol";
 
-// Inheritance
+// Inheritance.
 import "./interfaces/ILiquidityBond.sol";
 
-// Interfaces
+// Interfaces.
 import "./interfaces/IReleaseEscrow.sol";
 import "./interfaces/IPriceCalculator.sol";
 import "./interfaces/IRouter.sol";
@@ -24,15 +25,17 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    /* ========== STATE VARIABLES ========== */
+    /* ========== CONSTANTS ========== */
 
-    uint256 public constant MAX_PURCHASE_AMOUNT = 1e21; // 1000 CELO
-    uint256 public constant MIN_AVERAGE_FOR_PERIOD = 1e21; // 1000 CELO
+    uint256 public constant MAX_PURCHASE_AMOUNT = 1e21; // 1000 CELO.
+    uint256 public constant MIN_AVERAGE_FOR_PERIOD = 1e21; // 1000 CELO.
     uint256 public constant PERIOD_DURATION = 1 days;
 
-    IERC20 public immutable rewardsToken; // TGEN token
-    IERC20 public immutable collateralToken; // CELO token
-    IUniswapV2Pair public immutable lpPair; // TGEN-CELO LP pair on Ubeswap
+    /* ========== STATE VARIABLES ========== */
+
+    IERC20 public immutable rewardsToken; // TGEN token.
+    IERC20 public immutable collateralToken; // CELO token.
+    IUniswapV2Pair public immutable lpPair; // TGEN-CELO LP pair on Ubeswap.
     IReleaseEscrow public releaseEscrow;
     IPriceCalculator public immutable priceCalculator;
     IRouter public immutable router;
@@ -43,7 +46,7 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
     uint256 public totalAvailableRewards;
     uint256 public totalStakedAmount;
     uint256 public rewardPerTokenStored;
-    uint256 public bondTokenPrice = 1e18; // Price of 1 bond token in USD
+    uint256 public bondTokenPrice = 1e18; // Price of 1 bond token in USD.
     uint256 public startTime;
 
     uint256 public totalLPTokens;
@@ -52,7 +55,7 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
     // Keeps track of whether a user has migrated their bond tokens to the StakingRewards contract.
     mapping(address => bool) public hasMigrated;
 
-    mapping(uint256 => uint256) public stakedAmounts; // Period index => amount of CELO staked
+    mapping(uint256 => uint256) public stakedAmounts; // Period index => amount of CELO staked.
     mapping(address => uint256) public userRewardPerTokenPaid;
     mapping(address => uint256) public rewards;
 
@@ -79,21 +82,21 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
     /* ========== VIEWS ========== */
 
     /**
-     * @dev Returns whether the rewards have started.
+     * @notice Returns whether the rewards have started.
      */
     function hasStarted() public view override returns (bool) {
         return block.timestamp >= startTime;
     }
 
     /**
-     * @dev Returns the period index of the given timestamp.
+     * @notice Returns the period index of the given timestamp.
      */
     function getPeriodIndex(uint256 _timestamp) public view override returns (uint256) {
         return (_timestamp.sub(startTime)).div(PERIOD_DURATION);
     }
 
     /**
-     * @dev Calculates the amount of unclaimed rewards the user has available.
+     * @notice Calculates the amount of unclaimed rewards the user has available.
      * @param _account address of the user.
      * @return (uint256) amount of available unclaimed rewards.
      */
@@ -104,7 +107,8 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
     /* ========== MUTATIVE FUNCTIONS ========== */
 
     /**
-     * @dev Transfers LP tokens to the user and burns their LP tokens.
+     * @notice Transfers LP tokens to the user and burns their LP tokens.
+     * @dev This function can only be called once per user.
      */
     function migrateBondTokens() external nonReentrant releaseEscrowIsSet {
         require(backupMode.useBackup(), "LiquidityBond: Protocol must be in backup mode to migrate tokens.");
@@ -127,8 +131,8 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
     }
 
     /**
-     * @dev Purchases liquidity bonds.
-     * @notice Swaps 1/2 of collateral for TGEN and adds liquidity.
+     * @notice Purchases liquidity bonds.
+     * @dev Swaps 1/2 of collateral for TGEN and adds liquidity.
      * @param _amount amount of collateral to deposit.
      */
     function purchase(uint256 _amount) external override nonReentrant releaseEscrowIsSet rewardsHaveStarted updateReward(msg.sender) {
@@ -168,14 +172,14 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
     }
 
     /**
-     * @dev Claims available rewards for the user.
+     * @notice Claims available rewards for the user.
      */
     function getReward() public override nonReentrant releaseEscrowIsSet rewardsHaveStarted {
         _getReward();
     }
 
     /**
-     * @dev Hook that is called before any transfer of tokens. This includes
+     * @notice Hook that is called before any transfer of tokens. This includes
      * minting and burning.
      *
      * Calling conditions:
@@ -200,7 +204,7 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
     /* ========== INTERNAL FUNCTIONS ========== */
 
     /**
-     * @dev Updates available rewards for the contracts and claims user's share of rewards.
+     * @notice Updates available rewards for the contracts and claims user's share of rewards.
      */
     function _getReward() internal {
         uint256 availableRewards = releaseEscrow.withdraw();
@@ -214,7 +218,7 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
     }
 
     /**
-     * @dev Claims available rewards for the user.
+     * @notice Claims available rewards for the user.
      */
     function _claimReward() internal updateReward(msg.sender) {
         uint256 reward = rewards[msg.sender];
@@ -227,7 +231,7 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
     }
 
     /**
-     * @dev Updates the available rewards for the LiquidityBond contract, based on the release schedule.
+     * @notice Updates the available rewards for the LiquidityBond contract, based on the release schedule.
      * @param _reward number of tokens to add to the LiquidityBond contract.
      */
     function _addReward(uint256 _reward) internal {
@@ -241,8 +245,8 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
     }
 
     /**
-     * @dev Supplies liquidity for TGEN-CELO pair.
-     * @notice Transfers unused TGEN to xTGEN contract.
+     * @notice Supplies liquidity for TGEN-CELO pair.
+     * @dev Transfers unused TGEN to xTGEN contract.
      * @param _amountOfCollateral number of asset tokens to supply.
      * @return (uint256) Number of LP tokens received.
      */
@@ -272,10 +276,10 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
     }
 
     /**
-     * @dev Calculates the number of bonus tokens to consider as collateral when minting bond tokens.
-     * @notice The bonus multiplier for each period starts at +20% and falls linearly to +0% until max(1000, 1.1 * (totalSupply - amountStaked[n]) / (n-1))
+     * @notice Calculates the number of bonus tokens to consider as collateral when minting bond tokens.
+     * @dev The bonus multiplier for each period starts at +20% and falls linearly to +0% until max(1000, 1.1 * (totalSupply - amountStaked[n]) / (n-1))
      *          have been staked for the current period.
-     * @notice The final bonus amount is [(2ac - c^2) / 10m].
+     * @dev The final bonus amount is [(2ac - c^2) / 10m].
      * @param _amountOfCollateral number of asset tokens to supply.
      */
     function _calculateBonusAmount(uint256 _amountOfCollateral) internal view returns (uint256) {
@@ -292,11 +296,11 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
     /* ========== RESTRICTED FUNCTIONS ========== */
 
     /**
-     * @dev Sets the address of the ReleaseEscrow contract.
-     * @notice This function can only be called once, and must be called before users can interact with LiquidityBond contract.
+     * @notice Sets the address of the ReleaseEscrow contract.
+     * @dev This function can only be called once, and must be called before users can interact with LiquidityBond contract.
      */
     function setReleaseEscrow(address _releaseEscrow) external onlyOwner releaseEscrowIsNotSet {
-        require(_releaseEscrow != address(0), "LiquidityBond: invalid address.");
+        require(_releaseEscrow != address(0), "LiquidityBond: Invalid address.");
 
         releaseEscrow = IReleaseEscrow(_releaseEscrow);
         startTime = releaseEscrow.startTime();
