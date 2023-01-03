@@ -18,6 +18,17 @@ This protocol is experimental.
 
 ## System Design
 
+### Smart Contracts
+
+* ExecutionPrice - An order book that executes orders for liquidity bond tokens at a pre-determined price.
+* ExecutionPriceFactory - Creates ExecutionPrice contracts. Only the PriceManager contract can interact with this contract.
+* HalveningReleaseSchedule - Stores the release schedule for a reward token.
+* LiquidityBond - An ERC20 token that represents a user's stake in a liquidity pool.
+* Marketplace - Used for buying/selling ExecutionPrice NFTs.
+* PriceManager - Handles price calculations and token logic for ExecutionPrice NFTs.
+* ReleaseEscrow - Stores reward tokens to be released according to the HalveningReleaseSchedule.
+* Router - Handles swapping to/from TGEN and adding/removing liquidity.
+* UbeswapPathManager - Stores the optimal path for swapping to/from an asset.
 
 ## Repository Structure
 
