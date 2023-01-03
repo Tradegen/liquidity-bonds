@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { parseEther } = require("@ethersproject/units");
-/*
+
 describe("ExecutionPrice", () => {
   let deployer;
   let otherUser;
@@ -51,6 +51,10 @@ describe("ExecutionPrice", () => {
   let executionPriceAddress;
   let ExecutionPriceFactory;
 
+  let backupMode;
+  let backupModeAddress;
+  let BackupModeFactory;
+
   const ONE_WEEK = 86400 * 7;
   const CYCLE_DURATION = ONE_WEEK * 26;
   
@@ -70,6 +74,11 @@ describe("ExecutionPrice", () => {
     ReleaseEscrowFactory = await ethers.getContractFactory('ReleaseEscrow');
     LiquidityBondFactory = await ethers.getContractFactory('TestLiquidityBond');
     ExecutionPriceFactory = await ethers.getContractFactory('TestExecutionPrice');
+    BackupModeFactory = await ethers.getContractFactory('BackupMode');
+
+    backupMode = await BackupModeFactory.deploy();
+    await backupMode.deployed();
+    backupModeAddress = backupMode.address;
 
     tradegenToken = await TestTokenFactory.deploy("Test TGEN", "TGEN");
     await tradegenToken.deployed();
@@ -105,7 +114,7 @@ describe("ExecutionPrice", () => {
     await ubeswapRouter.deployed();
     ubeswapRouterAddress = ubeswapRouter.address;
 
-    router = await RouterFactory.deploy(pathManagerAddress, ubeswapRouterAddress, tradegenTokenAddress);
+    router = await RouterFactory.deploy(pathManagerAddress, ubeswapRouterAddress, tradegenTokenAddress, tradegenTokenAddress);
     await router.deployed();
     routerAddress = router.address;
 
@@ -129,7 +138,7 @@ describe("ExecutionPrice", () => {
 
     let pair = await ubeswapFactory.getPair(tradegenTokenAddress, mockCELOAddress);
 
-    liquidityBond = await LiquidityBondFactory.deploy(tradegenTokenAddress, mockCELOAddress, pair, priceCalculatorAddress, routerAddress, ubeswapRouterAddress, pairDataAddress);
+    liquidityBond = await LiquidityBondFactory.deploy(tradegenTokenAddress, mockCELOAddress, pair, priceCalculatorAddress, routerAddress, ubeswapRouterAddress, pairDataAddress, backupModeAddress);
     await liquidityBond.deployed();
     liquidityBondAddress = liquidityBond.address;
 
@@ -435,7 +444,7 @@ describe("ExecutionPrice", () => {
         await releaseSchedule.deployed();
         releaseScheduleAddress = releaseSchedule.address;
 
-        releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, tradegenTokenAddress, releaseScheduleAddress);
+        releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, deployer.address, tradegenTokenAddress, releaseScheduleAddress, backupModeAddress);
         await releaseEscrow.deployed();
         releaseEscrowAddress = releaseEscrow.address;
 
@@ -879,7 +888,7 @@ describe("ExecutionPrice", () => {
         await releaseSchedule.deployed();
         releaseScheduleAddress = releaseSchedule.address;
 
-        releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, tradegenTokenAddress, releaseScheduleAddress);
+        releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, deployer.address, tradegenTokenAddress, releaseScheduleAddress, backupModeAddress);
         await releaseEscrow.deployed();
         releaseEscrowAddress = releaseEscrow.address;
 
@@ -1273,7 +1282,7 @@ describe("ExecutionPrice", () => {
         await releaseSchedule.deployed();
         releaseScheduleAddress = releaseSchedule.address;
 
-        releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, tradegenTokenAddress, releaseScheduleAddress);
+        releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, deployer.address, tradegenTokenAddress, releaseScheduleAddress, backupModeAddress);
         await releaseEscrow.deployed();
         releaseEscrowAddress = releaseEscrow.address;
 
@@ -1691,7 +1700,7 @@ describe("ExecutionPrice", () => {
         await releaseSchedule.deployed();
         releaseScheduleAddress = releaseSchedule.address;
 
-        releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, tradegenTokenAddress, releaseScheduleAddress);
+        releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, deployer.address, tradegenTokenAddress, releaseScheduleAddress, backupModeAddress);
         await releaseEscrow.deployed();
         releaseEscrowAddress = releaseEscrow.address;
 
@@ -2206,4 +2215,4 @@ describe("ExecutionPrice", () => {
         expect(order2.amountFilled).to.equal(0);
     });
   });
-});*/
+});

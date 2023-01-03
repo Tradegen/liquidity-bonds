@@ -66,7 +66,7 @@ describe("PriceManager", () => {
     priceManagerAddress = priceManager.address;
   });
   
-  /*
+  
   describe("#calculatePrice", () => {
     it("index > 1000", async () => {
         let price = await priceManager.calculatePrice(2001);
@@ -219,32 +219,32 @@ describe("PriceManager", () => {
         let tx = await executionPriceFactory.setPriceManager(priceManagerAddress);
         await tx.wait();
 
-        let tx2 = await priceManager.register(1, otherUser.address, executionPriceAddress, parseEther("1"));
+        let tx2 = await priceManager.register(1, deployer.address, executionPriceAddress, parseEther("1"));
         await tx2.wait();
 
         let tx3 = await priceManager.setFactory(executionPriceFactoryAddress);
         await tx3.wait();
 
-        let tx4 = await executionPrice.setPriceManager(executionPriceFactoryAddress);
+        let tx4 = await executionPrice.setIsInitialized(true);
         await tx4.wait();
 
-        let tx5 = await executionPrice.setIsInitialized(true);
+        let tx5 = await priceManager.setApprovalForAll(otherUser.address, true);
         await tx5.wait();
 
-        let tx6 = await priceManager.connect(otherUser).setApprovalForAll(deployer.address, true);
+        let tx6 = await executionPrice.setFactory(executionPriceFactoryAddress);
         await tx6.wait();
 
-        let tx7 = await priceManager.connect(otherUser).safeTransferFrom(otherUser.address, deployer.address, 1, 1, "0x00");
+        let tx7 = await priceManager.safeTransferFrom(deployer.address, otherUser.address, 1, 1, "0x00");
         await tx7.wait();
 
         let balance1 = await priceManager.balanceOf(otherUser.address, 1);
-        expect(balance1).to.equal(0);
+        expect(balance1).to.equal(1);
 
         let balance2 = await priceManager.balanceOf(deployer.address, 1);
-        expect(balance2).to.equal(1);
+        expect(balance2).to.equal(0);
 
         let info = await priceManager.executionPrices(1);
-        expect(info.owner).to.equal(deployer.address);
+        expect(info.owner).to.equal(otherUser.address);
     });
-  });*/
+  });
 });

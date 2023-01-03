@@ -267,7 +267,6 @@ contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
         
         collateralToken.approve(address(router), _amountOfCollateral.div(2));
         rewardsToken.approve(address(router), neededTGEN);
-        router.addLiquidity(address(collateralToken), _amountOfCollateral.div(2), neededTGEN);
 
         // Transfer unused TGEN to xTGEN contract.
         rewardsToken.safeTransfer(xTGEN, receivedTGEN.sub(neededTGEN));

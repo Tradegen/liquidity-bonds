@@ -51,6 +51,10 @@ describe("LiquidityBond", () => {
   let liquidityBondAddress;
   let LiquidityBondFactory;
 
+  let backupMode;
+  let backupModeAddress;
+  let BackupModeFactory;
+
   const ONE_WEEK = 86400 * 7;
   const CYCLE_DURATION = ONE_WEEK * 26;
   
@@ -70,6 +74,11 @@ describe("LiquidityBond", () => {
     ReleaseEscrowFactory = await ethers.getContractFactory('ReleaseEscrow');
     BotTokenFactory = await ethers.getContractFactory('TestSyntheticBotToken');
     LiquidityBondFactory = await ethers.getContractFactory('TestLiquidityBond');
+    BackupModeFactory = await ethers.getContractFactory('BackupMode');
+
+    backupMode = await BackupModeFactory.deploy();
+    await backupMode.deployed();
+    backupModeAddress = backupMode.address;
 
     tradegenToken = await TestTokenFactory.deploy("Test TGEN", "TGEN");
     await tradegenToken.deployed();
@@ -111,7 +120,7 @@ describe("LiquidityBond", () => {
     await ubeswapRouter.deployed();
     ubeswapRouterAddress = ubeswapRouter.address;
 
-    router = await RouterFactory.deploy(pathManagerAddress, ubeswapRouterAddress, tradegenTokenAddress);
+    router = await RouterFactory.deploy(pathManagerAddress, ubeswapRouterAddress, tradegenTokenAddress, tradegenTokenAddress);
     await router.deployed();
     routerAddress = router.address;
 
@@ -133,11 +142,11 @@ describe("LiquidityBond", () => {
 
     let pair = await ubeswapFactory.getPair(tradegenTokenAddress, mockCELOAddress);
 
-    liquidityBond = await LiquidityBondFactory.deploy(tradegenTokenAddress, mockCELOAddress, pair, priceCalculatorAddress, routerAddress, ubeswapRouterAddress, pairDataAddress);
+    liquidityBond = await LiquidityBondFactory.deploy(tradegenTokenAddress, mockCELOAddress, pair, priceCalculatorAddress, routerAddress, ubeswapRouterAddress, pairDataAddress, backupModeAddress);
     await liquidityBond.deployed();
     liquidityBondAddress = liquidityBond.address;
   });
-  /*
+  
   describe("#calculateBonusAmount", () => {
     it("none purchased for current period; buy 1/2 of available tokens; period 0", async () => {
       let currentTime = await pairData.getCurrentTime();
@@ -474,8 +483,8 @@ describe("LiquidityBond", () => {
       let pair = await ubeswapFactory.getPair(tradegenTokenAddress, mockCELOAddress);
 
       let reserves = await pairData.getReserves(pair);
-      expect(reserves[0]).to.equal("1009999999999999999999"); // 1009.99 TGEN
-      expect(reserves[1]).to.equal("999990173363890458799"); // 999.9901 TGEN 
+      expect(reserves[1]).to.equal("1009999999999999999999"); // 999.9901 TGEN
+      expect(reserves[0]).to.equal("999990173363890458799"); // 1009.99 TGEN
     });
 
     it("moderate slippage", async () => {
@@ -494,8 +503,8 @@ describe("LiquidityBond", () => {
       let pair = await ubeswapFactory.getPair(tradegenTokenAddress, mockCELOAddress);
 
       let reserves = await pairData.getReserves(pair);
-      expect(reserves[0]).to.equal("1199999999999999999999"); // 1199.99 TGEN
-      expect(reserves[1]).to.equal("992006084303983731100"); // 992.006 TGEN 
+      expect(reserves[1]).to.equal("1199999999999999999999"); // 992.006 TGEN
+      expect(reserves[0]).to.equal("992006084303983731100"); // 1199.99 TGEN
     });
 
     it("high slippage", async () => {
@@ -514,8 +523,8 @@ describe("LiquidityBond", () => {
       let pair = await ubeswapFactory.getPair(tradegenTokenAddress, mockCELOAddress);
 
       let reserves = await pairData.getReserves(pair);
-      expect(reserves[0]).to.equal("3999999999999999999998"); // 3999.99 TGEN
-      expect(reserves[1]).to.equal("641154077339210579043"); // 641.154 TGEN 
+      expect(reserves[1]).to.equal("3999999999999999999998"); // 641.154 TGEN
+      expect(reserves[0]).to.equal("641154077339210579043"); // 3999.99 TGEN
     });
   });
   
@@ -535,7 +544,7 @@ describe("LiquidityBond", () => {
       await releaseSchedule.deployed();
       releaseScheduleAddress = releaseSchedule.address;
 
-      releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, tradegenTokenAddress, releaseScheduleAddress);
+      releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, deployer.address, tradegenTokenAddress, releaseScheduleAddress, backupModeAddress);
       await releaseEscrow.deployed();
       releaseEscrowAddress = releaseEscrow.address;
 
@@ -559,7 +568,7 @@ describe("LiquidityBond", () => {
       await releaseSchedule.deployed();
       releaseScheduleAddress = releaseSchedule.address;
 
-      releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, tradegenTokenAddress, releaseScheduleAddress);
+      releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, deployer.address, tradegenTokenAddress, releaseScheduleAddress, backupModeAddress);
       await releaseEscrow.deployed();
       releaseEscrowAddress = releaseEscrow.address;
 
@@ -603,7 +612,7 @@ describe("LiquidityBond", () => {
       await releaseSchedule.deployed();
       releaseScheduleAddress = releaseSchedule.address;
 
-      releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, tradegenTokenAddress, releaseScheduleAddress);
+      releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, deployer.address, tradegenTokenAddress, releaseScheduleAddress, backupModeAddress);
       await releaseEscrow.deployed();
       releaseEscrowAddress = releaseEscrow.address;
 
@@ -647,7 +656,7 @@ describe("LiquidityBond", () => {
       await releaseSchedule.deployed();
       releaseScheduleAddress = releaseSchedule.address;
 
-      releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, tradegenTokenAddress, releaseScheduleAddress);
+      releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, deployer.address, tradegenTokenAddress, releaseScheduleAddress, backupModeAddress);
       await releaseEscrow.deployed();
       releaseEscrowAddress = releaseEscrow.address;
 
@@ -691,7 +700,7 @@ describe("LiquidityBond", () => {
       await releaseSchedule.deployed();
       releaseScheduleAddress = releaseSchedule.address;
 
-      releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, tradegenTokenAddress, releaseScheduleAddress);
+      releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, deployer.address, tradegenTokenAddress, releaseScheduleAddress, backupModeAddress);
       await releaseEscrow.deployed();
       releaseEscrowAddress = releaseEscrow.address;
 
@@ -733,8 +742,8 @@ describe("LiquidityBond", () => {
       let totalStakedAmount = await liquidityBond.totalStakedAmount();
       expect(totalStakedAmount).to.equal(parseEther("1900"));
     });
-  });*/
-  /*
+  });
+  
   describe("#getReward", () => {
     it("release escrow not set", async () => {
       let initialBalance = await tradegenToken.balanceOf(pairDataAddress);
@@ -757,7 +766,7 @@ describe("LiquidityBond", () => {
       await releaseSchedule.deployed();
       releaseScheduleAddress = releaseSchedule.address;
 
-      releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, tradegenTokenAddress, releaseScheduleAddress);
+      releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, deployer.address, tradegenTokenAddress, releaseScheduleAddress, backupModeAddress);
       await releaseEscrow.deployed();
       releaseEscrowAddress = releaseEscrow.address;
 
@@ -782,7 +791,7 @@ describe("LiquidityBond", () => {
       await releaseSchedule.deployed();
       releaseScheduleAddress = releaseSchedule.address;
 
-      releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, tradegenTokenAddress, releaseScheduleAddress);
+      releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, deployer.address, tradegenTokenAddress, releaseScheduleAddress, backupModeAddress);
       await releaseEscrow.deployed();
       releaseEscrowAddress = releaseEscrow.address;
 
@@ -811,7 +820,7 @@ describe("LiquidityBond", () => {
       await releaseSchedule.deployed();
       releaseScheduleAddress = releaseSchedule.address;
 
-      releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, tradegenTokenAddress, releaseScheduleAddress);
+      releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, deployer.address, tradegenTokenAddress, releaseScheduleAddress, backupModeAddress);
       await releaseEscrow.deployed();
       releaseEscrowAddress = releaseEscrow.address;
 
@@ -865,7 +874,7 @@ describe("LiquidityBond", () => {
       await releaseSchedule.deployed();
       releaseScheduleAddress = releaseSchedule.address;
 
-      releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, tradegenTokenAddress, releaseScheduleAddress);
+      releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, deployer.address, tradegenTokenAddress, releaseScheduleAddress, backupModeAddress);
       await releaseEscrow.deployed();
       releaseEscrowAddress = releaseEscrow.address;
 
@@ -940,7 +949,7 @@ describe("LiquidityBond", () => {
       await releaseSchedule.deployed();
       releaseScheduleAddress = releaseSchedule.address;
 
-      releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, tradegenTokenAddress, releaseScheduleAddress);
+      releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, deployer.address, tradegenTokenAddress, releaseScheduleAddress, backupModeAddress);
       await releaseEscrow.deployed();
       releaseEscrowAddress = releaseEscrow.address;
 
@@ -999,7 +1008,7 @@ describe("LiquidityBond", () => {
       await releaseSchedule.deployed();
       releaseScheduleAddress = releaseSchedule.address;
 
-      releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, tradegenTokenAddress, releaseScheduleAddress);
+      releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, deployer.address, tradegenTokenAddress, releaseScheduleAddress, backupModeAddress);
       await releaseEscrow.deployed();
       releaseEscrowAddress = releaseEscrow.address;
 
@@ -1061,7 +1070,7 @@ describe("LiquidityBond", () => {
       await releaseSchedule.deployed();
       releaseScheduleAddress = releaseSchedule.address;
 
-      releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, tradegenTokenAddress, releaseScheduleAddress);
+      releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, deployer.address, tradegenTokenAddress, releaseScheduleAddress, backupModeAddress);
       await releaseEscrow.deployed();
       releaseEscrowAddress = releaseEscrow.address;
 
@@ -1118,15 +1127,15 @@ describe("LiquidityBond", () => {
     });
   });
 
-  describe("#convertBotTokens", () => { 
-    it("bot rewards have not ended", async () => {
+  describe("#migrateBondTokens", () => {
+    it("not in backup mode", async () => {
       let currentTime = await pairData.getCurrentTime();
 
-      releaseSchedule = await ReleaseScheduleFactory.deploy(parseEther("1000"), currentTime);
+      releaseSchedule = await ReleaseScheduleFactory.deploy(parseEther("1000"), currentTime - 1000);
       await releaseSchedule.deployed();
       releaseScheduleAddress = releaseSchedule.address;
 
-      releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, tradegenTokenAddress, releaseScheduleAddress);
+      releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, deployer.address, tradegenTokenAddress, releaseScheduleAddress, backupModeAddress);
       await releaseEscrow.deployed();
       releaseEscrowAddress = releaseEscrow.address;
 
@@ -1136,35 +1145,42 @@ describe("LiquidityBond", () => {
       let tx2 = await liquidityBond.setReleaseEscrow(releaseEscrowAddress);
       await tx2.wait();
 
-      let tx3 = await botToken.setRewardsEndOn(Number(currentTime) + 100);
+      let tx3 = await mockCELO.approve(liquidityBondAddress, parseEther("1000"));
       await tx3.wait();
 
-      let tx4 = await botToken.testMint(1, parseEther("1"));
+      let tx4 = await liquidityBond.purchase(parseEther("1000"));
       await tx4.wait();
 
-      let tx5 = await botToken.setApprovalForAll(liquidityBondAddress, true);
-      await tx5.wait();
+      let tx5 = liquidityBond.migrateBondTokens();
+      await expect(tx5).to.be.reverted;
 
-      let tx6 = liquidityBond.convertBotTokens(botTokenAddress, 1, parseEther("1"));
-      await expect(tx6).to.be.reverted;
+      let bondTokenBalance = await liquidityBond.balanceOf(deployer.address);
+      expect(bondTokenBalance).to.not.equal(BigInt(0));
 
-      let totalSupply = await liquidityBond.totalSupply();
-      expect(totalSupply).to.equal(0);
+      let lpTokenBalance = await liquidityBond.userLPTokens(deployer.address);
+      expect(lpTokenBalance).to.not.equal(BigInt(0));
 
-      let balance = await botToken.balanceOf(deployer.address, 1);
-      expect(balance).to.equal(parseEther("1"));
+      let hasMigrated = await liquidityBond.hasMigrated(deployer.address);
+      expect(hasMigrated).to.be.false;
+
+      let totalLPTokens = await liquidityBond.totalLPTokens();
+      expect(totalLPTokens).to.equal(lpTokenBalance);
     });
 
     it("meets requirements", async () => {
       let currentTime = await pairData.getCurrentTime();
 
-      releaseSchedule = await ReleaseScheduleFactory.deploy(parseEther("1000"), currentTime);
+      releaseSchedule = await ReleaseScheduleFactory.deploy(parseEther("1000"), currentTime - 1000);
       await releaseSchedule.deployed();
       releaseScheduleAddress = releaseSchedule.address;
 
-      releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, tradegenTokenAddress, releaseScheduleAddress);
+      releaseEscrow = await ReleaseEscrowFactory.deploy(liquidityBondAddress, deployer.address, tradegenTokenAddress, releaseScheduleAddress, backupModeAddress);
       await releaseEscrow.deployed();
       releaseEscrowAddress = releaseEscrow.address;
+
+      let pair = await ubeswapFactory.getPair(tradegenTokenAddress, mockCELOAddress);
+      let ERC20Factory = await ethers.getContractFactory('ERC20');
+      let pairContract = await ERC20Factory.attach(pair);
 
       let tx = await tradegenToken.transfer(releaseEscrowAddress, parseEther("1000"));
       await tx.wait();
@@ -1172,26 +1188,39 @@ describe("LiquidityBond", () => {
       let tx2 = await liquidityBond.setReleaseEscrow(releaseEscrowAddress);
       await tx2.wait();
 
-      let tx3 = await botToken.setRewardsEndOn(Number(currentTime) - 100);
+      let tx3 = await mockCELO.approve(liquidityBondAddress, parseEther("1000"));
       await tx3.wait();
 
-      let tx4 = await botToken.testMint(1, parseEther("1"));
+      let tx4 = await liquidityBond.purchase(parseEther("1000"));
       await tx4.wait();
 
-      let tx5 = await botToken.setApprovalForAll(liquidityBondAddress, true);
+      let LPBalance = await liquidityBond.userLPTokens(deployer.address);
+      let initialBalance = await pairContract.balanceOf(deployer.address);
+
+      let tx5 = await backupMode.turnOnBackupMode();
       await tx5.wait();
 
-      let tx6 = await liquidityBond.convertBotTokens(botTokenAddress, 1, parseEther("1"));
+      let tx6 = await liquidityBond.migrateBondTokens();
       await tx6.wait();
 
-      let totalSupply = await liquidityBond.totalSupply();
-      expect(totalSupply).to.equal(parseEther("5"));
+      let bondTokenBalance = await liquidityBond.balanceOf(deployer.address);
+      expect(bondTokenBalance).to.equal(BigInt(0));
 
-      let balanceUser = await botToken.balanceOf(deployer.address, 1);
-      expect(balanceUser).to.equal(0);
+      let lpTokenBalance = await liquidityBond.userLPTokens(deployer.address);
+      expect(lpTokenBalance).to.equal(BigInt(0));
 
-      let balanceContract = await botToken.balanceOf(liquidityBondAddress, 1);
-      expect(balanceContract).to.equal(parseEther("1"));
+      let hasMigrated = await liquidityBond.hasMigrated(deployer.address);
+      expect(hasMigrated).to.be.true;
+
+      let totalLPTokens = await liquidityBond.totalLPTokens();
+      expect(totalLPTokens).to.equal(BigInt(0));
+
+      let newBalance = await pairContract.balanceOf(deployer.address);
+      let expectedBalance = BigInt(initialBalance) + BigInt(LPBalance);
+      expect(newBalance).to.equal(expectedBalance);
+
+      let tx7 = liquidityBond.migrateBondTokens();
+      await expect(tx7).to.be.reverted;
     });
-  });*/
+  });
 });

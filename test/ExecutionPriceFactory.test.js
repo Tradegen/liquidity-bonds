@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { parseEther } = require("@ethersproject/units");
-/*
+
 describe("ExecutionPriceFactory", () => {
   let deployer;
   let otherUser;
@@ -196,4 +196,4 @@ describe("ExecutionPriceFactory", () => {
         expect(params2.minimumOrderSize).to.equal(parseEther("10"));
     });
   });
-});*/
+});
