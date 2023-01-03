@@ -4,8 +4,8 @@ pragma solidity ^0.8.3;
 
 //Interfaces.
 import './interfaces/IUbeswapPathManager.sol';
-import './interfaces/IUniswapV2Router02.sol';
-import './interfaces/IUniswapV2Factory.sol';
+import './interfaces/Ubeswap/IUniswapV2Router02.sol';
+import './interfaces/Ubeswap/IUniswapV2Factory.sol';
 
 //OpenZeppelin.
 import "./openzeppelin-solidity/contracts/ERC20/SafeERC20.sol";

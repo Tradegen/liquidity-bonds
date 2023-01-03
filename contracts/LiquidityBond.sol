@@ -15,11 +15,11 @@ import "./interfaces/ILiquidityBond.sol";
 
 // Interfaces.
 import "./interfaces/IReleaseEscrow.sol";
-import "./interfaces/IPriceCalculator.sol";
+import "./interfaces/external/IPriceCalculator.sol";
 import "./interfaces/IRouter.sol";
-import "./interfaces/IUniswapV2Pair.sol";
-import './interfaces/IUniswapV2Router02.sol';
-import "./interfaces/IBackupMode.sol";
+import "./interfaces/Ubeswap/IUniswapV2Pair.sol";
+import './interfaces/Ubeswap/IUniswapV2Router02.sol';
+import "./interfaces/backup/IBackupMode.sol";
 
 contract LiquidityBond is ILiquidityBond, ReentrancyGuard, Ownable, ERC20 {
     using SafeMath for uint256;

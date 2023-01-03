@@ -9,7 +9,7 @@ import "./openzeppelin-solidity/contracts/ReentrancyGuard.sol";
 
 // Interfaces.
 import "./interfaces/IReleaseSchedule.sol";
-import "./interfaces/IBackupMode.sol";
+import "./interfaces/backup/IBackupMode.sol";
 
 // Inheritance.
 import "./interfaces/IReleaseEscrow.sol";

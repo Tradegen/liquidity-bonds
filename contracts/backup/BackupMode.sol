@@ -6,7 +6,7 @@ pragma solidity ^0.8.3;
 import "../openzeppelin-solidity/contracts/Ownable.sol";
 
 // Inheritance.
-import '../interfaces/IBackupMode.sol';
+import '../interfaces/backup/IBackupMode.sol';
 
 contract BackupMode is IBackupMode, Ownable {
 

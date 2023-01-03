@@ -12,10 +12,10 @@ import "../openzeppelin-solidity/contracts/ERC20/SafeERC20.sol";
 
 // Interfaces.
 import "../interfaces/IReleaseEscrow.sol";
-import "../interfaces/IBackupMode.sol";
+import "../interfaces/backup/IBackupMode.sol";
 
 // Inheritance.
-import "../interfaces/IStakingRewards.sol";
+import "../interfaces/backup/IStakingRewards.sol";
 
 contract StakingRewards is IStakingRewards, ReentrancyGuard, Ownable {
     using SafeMath for uint256;
